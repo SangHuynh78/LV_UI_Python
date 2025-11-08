@@ -2,7 +2,7 @@ import sys
 import paramiko
 import threading
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QLineEdit, QPushButton, QGroupBox, QMessageBox, QTextEdit
 )
 from PyQt5.QtCore import QTimer, Qt
@@ -11,7 +11,7 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtGui import QIcon
 
 # ---------- Cấu hình mặc định ----------
-DEFAULT_HOST = "192.168.1.9"
+DEFAULT_HOST = "192.168.1.11"
 DEFAULT_USER = "spec_cam"
 DEFAULT_PASS = "cam"
 DEFAULT_SCRIPT = "/home/spec_cam/SangHuynh_Dev/sang_temp.py"
@@ -77,6 +77,7 @@ class CubeSat_Monitor(QWidget):
         col1_layout.addWidget(log_group, 4)
 
         # ========= CỘT 2 =========
+        # --- Hàng 1: Biểu đồ nhiệt độ ---
         graph_group = QGroupBox("📊 Biểu đồ nhiệt độ 8 NTC")
         graph_layout = QVBoxLayout()
         self.graph = pg.PlotWidget(title="Nhiệt độ 8 NTC theo thời gian (°C)")
@@ -86,7 +87,83 @@ class CubeSat_Monitor(QWidget):
         self.graph.addLegend(offset=(10, 10))
         graph_layout.addWidget(self.graph)
         graph_group.setLayout(graph_layout)
-        col2_layout.addWidget(graph_group)
+
+        # --- Hàng 2: Điều khiển thí nghiệm ---
+        exp_control_group = QGroupBox("🛠️ Điều khiển thí nghiệm")
+        exp_control_layout = QVBoxLayout()
+        self.start_exp_btn = QPushButton("Bắt đầu thí nghiệm")
+        self.stop_exp_btn = QPushButton("Dừng thí nghiệm")
+        exp_control_group.setLayout(exp_control_layout)
+
+        # --- Hàng 2.1: Chế độ điều khiển ---
+        menu_exp_group = QGroupBox()
+        menu_exp_layout = QHBoxLayout()
+
+        # Dùng RadioButton cho trực quan
+        from PyQt5.QtWidgets import QRadioButton
+        self.manual_radio = QRadioButton("Manual Mode")
+        self.auto_radio = QRadioButton("Auto Mode")
+
+        self.manual_radio.setChecked(True)  # Mặc định Manual
+        self.manual_radio.toggled.connect(self.switch_mode)
+
+
+        menu_exp_layout.addWidget(self.manual_radio)
+        menu_exp_layout.addWidget(self.auto_radio)
+        menu_exp_group.setLayout(menu_exp_layout)
+
+        # Thêm menu_exp vào layout exp_control_layout
+        exp_control_layout.addWidget(menu_exp_group, 1)
+
+        # --- Hàng 2.2: Manual Mode Box ---
+        self.manual_box = QGroupBox("🧭 Manual Control")
+        manual_layout = QVBoxLayout()
+        grid_layout = QGridLayout()
+        self.manual_buttons = []  # Lưu danh sách nút để quản lý trạng thái
+        for i in range(6):
+            for j in range(6):
+                idx = i * 6 + j + 1
+                btn = QPushButton(str(idx))
+                btn.setFixedSize(60, 60)
+                btn.setCheckable(True)  # Cho phép toggle ON/OFF
+                btn.setStyleSheet("""
+                    QPushButton {
+                        border-radius: 30px;
+                        border: 2px solid black;
+                        background-color: white;
+                        color: black;
+                        font-weight: bold;
+                        font-size: 14px;
+                    }
+                    QPushButton:checked {
+                        background-color: #45a049;
+                        border: 2px solid black;
+                        color: white;
+                    }
+                """)
+                btn.clicked.connect(lambda _, pos=idx, b=btn: self.manual_exp_with_pos(pos, b))
+                self.manual_buttons.append(btn)
+                grid_layout.addWidget(btn, i, j)
+        manual_layout.addLayout(grid_layout)
+        self.manual_box.setLayout(manual_layout)
+
+        # --- Hàng 2.3: Auto Mode Box ---
+        self.auto_box = QGroupBox("🤖 Auto Control")
+        auto_layout = QVBoxLayout()
+        auto_layout.addWidget(QPushButton("Chạy chu trình thí nghiệm"))
+        auto_layout.addWidget(QPushButton("Dừng chu trình"))
+        self.auto_box.setLayout(auto_layout)
+
+        # Mặc định ẩn Auto Box
+        self.auto_box.hide()
+
+        # Thêm 2 box vào layout vào exp_control_group
+        exp_control_layout.addWidget(self.manual_box, 8)
+        exp_control_layout.addWidget(self.auto_box, 8)
+
+        # Thêm 2 groupbox vào cột 2
+        col2_layout.addWidget(graph_group, 2)
+        col2_layout.addWidget(exp_control_group, 3)
 
         # ========= CỘT 3 =========
         # --- Hàng 1: Kết nối SSH ---
@@ -136,7 +213,6 @@ class CubeSat_Monitor(QWidget):
         # Thêm 2 groupbox vào cột 3
         col3_layout.addWidget(conn_group, 2)
         col3_layout.addWidget(image_group, 4)
-
 
         for i in range(8):
             color = pg.intColor(i, 8)
@@ -200,6 +276,27 @@ class CubeSat_Monitor(QWidget):
 
         except Exception as e:
             self.log_box.append(f"[!] Lỗi ngắt kết nối: {e}")
+
+    def switch_mode(self):
+        """Chuyển hiển thị giữa Manual và Auto box"""
+        if self.manual_radio.isChecked():
+            self.manual_box.show()
+            self.auto_box.hide()
+            self.log_box.append("[⚙️] Chuyển sang chế độ MANUAL.")
+        else:
+            self.manual_box.hide()
+            self.auto_box.show()
+            self.log_box.append("[⚙️] Chuyển sang chế độ AUTO.")
+
+
+    def manual_exp_with_pos(self, idx: int, button: QPushButton):
+        """Xử lý khi click nút manual vị trí idx"""
+        if button.isChecked():
+            self.log_box.append(f"[🧭] Bật thí nghiệm tại vị trí {idx}")
+        else:
+            self.log_box.append(f"[🧭] Tắt thí nghiệm tại vị trí {idx}")
+        print(f"Manual experiment toggle: {idx}, state={button.isChecked()}")
+        # 👉 Ở đây bạn có thể gửi lệnh điều khiển thực tế qua SSH nếu cần
 
 
     def read_remote_output(self):
