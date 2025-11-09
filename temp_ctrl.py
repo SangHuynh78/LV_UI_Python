@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (
-    QGroupBox, QGridLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QVBoxLayout, QMessageBox
+    QGroupBox, QGridLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QVBoxLayout, QMessageBox, QWidget
 )
 from PyQt5.QtCore import Qt
 import global_var
@@ -36,26 +36,33 @@ def create_temperature_show_box(parent):
 
 def create_temperature_control_box(parent):
     """
-    Tạo giao diện điều khiển nhiệt độ
+    Tạo giao diện điều khiển nhiệt độ với đơn vị hiển thị cuối ô
     """
     temp_ctrl_group = QGroupBox("🌡️ Điều khiển Nhiệt độ")
     temp_ctrl_layout = QGridLayout()
 
-    # --- Các ô nhập liệu ---
-    parent.tec_voltage = QLineEdit()
-    parent.temp_target = QLineEdit()
-    parent.temp_limit_min = QLineEdit()
-    parent.temp_limit_max = QLineEdit()
-    parent.ntc_pri = QLineEdit()
-    parent.ntc_sec = QLineEdit()
+    # --- Hàm tiện lợi tạo ô nhập + đơn vị ---
+    def create_lineedit_with_unit(unit):
+        container = QWidget()
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        lineedit = QLineEdit()
+        label_unit = QLabel(unit)
+        label_unit.setFixedWidth(20)  # hoặc một giá trị phù hợp
+        lineedit.setFixedWidth(100)    # đảm bảo tất cả lineedit có cùng chiều ngang
 
-    # Placeholder giúp gợi ý nội dung nhập
-    parent.tec_voltage.setPlaceholderText("VTEC (mV)")
-    parent.temp_target.setPlaceholderText("Target (°C)")
-    parent.temp_limit_min.setPlaceholderText("Min (°C)")
-    parent.temp_limit_max.setPlaceholderText("Max (°C)")
-    parent.ntc_pri.setPlaceholderText("NTC pri")
-    parent.ntc_sec.setPlaceholderText("NTC sec")
+        layout.addWidget(lineedit)
+        layout.addWidget(label_unit)
+        container.setLayout(layout)
+        return container, lineedit
+
+    # --- Các ô nhập liệu với đơn vị ---
+    tec_widget, parent.tec_voltage = create_lineedit_with_unit("mV")
+    target_widget, parent.temp_target = create_lineedit_with_unit("°C")
+    limit_min_widget, parent.temp_limit_min = create_lineedit_with_unit("°C")
+    limit_max_widget, parent.temp_limit_max = create_lineedit_with_unit("°C")
+    ntc_pri_widget, parent.ntc_pri = create_lineedit_with_unit("")
+    ntc_sec_widget, parent.ntc_sec = create_lineedit_with_unit("")
 
     # --- Nút START ---
     parent.start_temp_ctrl_btn = QPushButton("START")
@@ -63,26 +70,22 @@ def create_temperature_control_box(parent):
 
     # --- Layout ---
     temp_ctrl_layout.addWidget(QLabel("TEC Voltage:"),          0, 0)
-    temp_ctrl_layout.addWidget(parent.tec_voltage,              0, 1)
-
-    temp_ctrl_layout.addWidget(QLabel("Temperature Target:"),   1, 0)
-    temp_ctrl_layout.addWidget(parent.temp_target,              1, 1)
-
-    temp_ctrl_layout.addWidget(QLabel("Temperature Limit:"),    2, 0)
-    temp_ctrl_layout.addWidget(parent.temp_limit_min,           2, 1)
-    temp_ctrl_layout.addWidget(QLabel("to"),                    2, 2)
-    temp_ctrl_layout.addWidget(parent.temp_limit_max,           2, 3)
-
-    temp_ctrl_layout.addWidget(QLabel("NTC Reference:"),        3, 0)
-    temp_ctrl_layout.addWidget(QLabel("Pri:"),                  3, 1)
-    temp_ctrl_layout.addWidget(parent.ntc_pri,                  3, 2)
-    temp_ctrl_layout.addWidget(QLabel("Sec:"),                  3, 3)
-    temp_ctrl_layout.addWidget(parent.ntc_sec,                  3, 4)
-
-    temp_ctrl_layout.addWidget(parent.start_temp_ctrl_btn,      4, 1)
+    temp_ctrl_layout.addWidget(tec_widget,                      0, 1)
+    temp_ctrl_layout.addWidget(QLabel("Temp Target:"),          1, 0)
+    temp_ctrl_layout.addWidget(target_widget,                   1, 1)
+    temp_ctrl_layout.addWidget(QLabel("Temp Limit min:"),       2, 0)
+    temp_ctrl_layout.addWidget(limit_min_widget,                2, 1)
+    temp_ctrl_layout.addWidget(QLabel("Temp Limit max:"),       3, 0)
+    temp_ctrl_layout.addWidget(limit_max_widget,                3, 1)
+    temp_ctrl_layout.addWidget(QLabel("NTC Reference pri:"),    4, 0)
+    temp_ctrl_layout.addWidget(ntc_pri_widget,                  4, 1)
+    temp_ctrl_layout.addWidget(QLabel("NTC Reference sec:"),    5, 0)
+    temp_ctrl_layout.addWidget(ntc_sec_widget,                  5, 1)
+    temp_ctrl_layout.addWidget(parent.start_temp_ctrl_btn,      6, 0, 1, 2)
 
     temp_ctrl_group.setLayout(temp_ctrl_layout)
     return temp_ctrl_group
+
 
 
 def start_control_temperature(parent):
@@ -101,8 +104,8 @@ def start_control_temperature(parent):
         return
 
     # --- Kiểm tra giới hạn ---
-    if not (0 <= global_var.temp_tec_voltage <= 5000):
-        QMessageBox.warning(parent, "⚠️ Cảnh báo", "TEC Voltage vượt giới hạn (0–5000 mV).")
+    if not (0 <= global_var.temp_tec_voltage <= 3000):
+        QMessageBox.warning(parent, "⚠️ Cảnh báo", "TEC Voltage vượt giới hạn (0–3000 mV).")
         return
 
     if not (-40 <= global_var.temp_target <= 150):
@@ -122,11 +125,11 @@ def start_control_temperature(parent):
         return
 
     if not (0 <= global_var.ntc_pri_ref <= 100000):
-        QMessageBox.warning(parent, "⚠️ Cảnh báo", "NTC Pri Reference vượt giới hạn (0–100kΩ).")
+        QMessageBox.warning(parent, "⚠️ Cảnh báo", "NTC Pri Reference vượt giới hạn (0–7).")
         return
 
     if not (0 <= global_var.ntc_sec_ref <= 100000):
-        QMessageBox.warning(parent, "⚠️ Cảnh báo", "NTC Sec Reference vượt giới hạn (0–100kΩ).")
+        QMessageBox.warning(parent, "⚠️ Cảnh báo", "NTC Sec Reference vượt giới hạn (0–7).")
         return
 
     parent.log_box.append(f"[🌡️] Bắt đầu điều khiển nhiệt độ.")

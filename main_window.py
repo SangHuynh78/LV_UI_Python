@@ -8,24 +8,32 @@ from PyQt5.QtCore import QTimer, Qt
 import pyqtgraph as pg
 
 import global_var
-from ssh_handler import SSHHandler
+from ssh_handler import SSHHandler, create_ssh_group_box
 from temp_ctrl import create_temperature_show_box, create_temperature_control_box
 from exp_manual import create_manual_group_box
 from exp_auto import create_auto_group_box
 
 
-DEFAULT_HOST = "192.168.1.11"
-DEFAULT_USER = "spec_cam"
-DEFAULT_PASS = "cam"
-DEFAULT_SCRIPT = "/home/spec_cam/SangHuynh_Dev/sang_temp.py"
-
 
 class CubeSat_Monitor(QWidget):
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        if event.key() == Qt.Key_F11:
+            if self.full_secreen == True:
+                self.full_secreen = False
+                self.showNormal()
+            elif self.full_secreen == False:
+                self.full_secreen = True
+                self.showMaximized()
+        
+
     def __init__(self):
         super().__init__()
         self.setWindowIcon(QIcon("img/S_logo.png"))
         self.setWindowTitle("CubeSat System")
         self.resize(1920, 1080)
+        self.full_secreen = True
 
         # --- Dữ liệu nhiệt độ ---
         self.x_data = []
@@ -69,9 +77,9 @@ class CubeSat_Monitor(QWidget):
         log_group = QGroupBox("📝 Log / Trạng thái")
         self.log_box = QTextEdit()
         self.log_box.setReadOnly(True)
-        v = QVBoxLayout()
-        v.addWidget(self.log_box)
-        log_group.setLayout(v)
+        conn_ssh_layout = QVBoxLayout()
+        conn_ssh_layout.addWidget(self.log_box)
+        log_group.setLayout(conn_ssh_layout)
 
         layout.addWidget(self.temp_show_group, 1)
         layout.addWidget(self.temp_ctrl_group, 1)
@@ -131,25 +139,7 @@ class CubeSat_Monitor(QWidget):
     # ----------------------------
     def init_col3(self, layout):
         # --- Cột 3 hàng 1: Kết nối SSH ---
-        conn_group = QGroupBox("🔌 Kết nối SSH")
-        v = QVBoxLayout()
-        self.host_input = QLineEdit(DEFAULT_HOST)
-        self.user_input = QLineEdit(DEFAULT_USER)
-        self.pass_input = QLineEdit(DEFAULT_PASS)
-        self.pass_input.setEchoMode(QLineEdit.Password)
-        v.addWidget(QLabel("Host IP:"))
-        v.addWidget(self.host_input)
-        v.addWidget(QLabel("Username:"))
-        v.addWidget(self.user_input)
-        v.addWidget(QLabel("Password:"))
-        v.addWidget(self.pass_input)
-
-        self.connect_btn = QPushButton("Connect SSH")
-        self.connect_btn.clicked.connect(self.connect_ssh)
-        v.addWidget(self.connect_btn)
-        self.status_label = QLabel("⏳ Chưa kết nối.")
-        v.addWidget(self.status_label)
-        conn_group.setLayout(v)
+        conn_ssh_group = create_ssh_group_box(self)
 
         # --- Cột 3 hàng 2: Ảnh hệ thống ---
         img_group = QGroupBox("📷 Hình ảnh hệ thống")
@@ -161,26 +151,10 @@ class CubeSat_Monitor(QWidget):
         img_layout.addWidget(self.image_label)
         img_group.setLayout(img_layout)
 
-        layout.addWidget(conn_group, 2)
+        layout.addWidget(conn_ssh_group, 2)
         layout.addWidget(img_group, 4)
 
-    # ----------------------------
-    # SSH
-    # ----------------------------
-    def connect_ssh(self):
-        host, user, pw = self.host_input.text(), self.user_input.text(), self.pass_input.text()
-        self.ssh_handler.connect(host, user, pw, DEFAULT_SCRIPT)
-        self.connect_btn.setText("Disconnect SSH")
-        self.connect_btn.clicked.disconnect()
-        self.connect_btn.clicked.connect(self.disconnect_ssh)
-        self.timer.start(500)
 
-    def disconnect_ssh(self):
-        self.ssh_handler.disconnect()
-        self.connect_btn.setText("Connect SSH")
-        self.connect_btn.clicked.disconnect()
-        self.connect_btn.clicked.connect(self.connect_ssh)
-        self.timer.stop()
 
     # ----------------------------
     # Nhiệt độ

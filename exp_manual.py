@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QGroupBox, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton,
-    QLineEdit, QMessageBox, QSizePolicy
+    QLineEdit, QMessageBox, QSizePolicy, QLabel
 )
 from PyQt5.QtCore import Qt
 import global_var
@@ -43,18 +43,23 @@ def create_manual_group_box(parent):
     grid_group.setLayout(grid)
     layout_laser.addWidget(grid_group, 7)
 
-    # --- Nhóm điều khiển DAC ---
-    dac_group = QGroupBox("DAC Control")
-    dac_layout = QVBoxLayout()
+    # --- Nhóm điều khiển Laser Intensity ---
+    manual_laser_percent_group = QGroupBox("Laser Intensity Control")
+    manual_laser_percent_layout = QGridLayout()
 
-    dac_text_line = QLineEdit()
-    dac_text_line.setFixedWidth(200)
-    dac_text_line.setPlaceholderText("Nhập giá trị DAC (0-100) %")
+    manual_laser_percent_label = QLabel("Laser Intensity")
 
-    dac_button = QPushButton("Set DAC")
-    dac_button.setFixedWidth(100)
-    dac_button.setFixedHeight(60)
-    dac_button.setStyleSheet("""
+    manual_laser_percent_text_line = QLineEdit()
+    manual_laser_percent_text_line.setFixedWidth(180)
+    manual_laser_percent_text_line.setPlaceholderText("Type laser intensity (0-100)")
+
+    manual_laser_percent_unit = QLabel("%")
+    manual_laser_percent_unit.setFixedWidth(15)
+
+    manual_laser_percent_btn = QPushButton("Set Intensity")
+    manual_laser_percent_btn.setFixedWidth(100)
+    manual_laser_percent_btn.setFixedHeight(60)
+    manual_laser_percent_btn.setStyleSheet("""
         QPushButton {
             background-color: #2196F3;
             color: white;
@@ -67,28 +72,27 @@ def create_manual_group_box(parent):
             border: 2px solid black;
         }
     """)
-    dac_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+    manual_laser_percent_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+    manual_laser_percent_btn.clicked.connect(lambda: on_set_dac(manual_laser_percent_text_line, parent))
+    
+    manual_laser_percent_layout.addWidget(manual_laser_percent_label, 0, 0, alignment=Qt.AlignCenter)
+    manual_laser_percent_layout.addWidget(manual_laser_percent_text_line, 0, 1, alignment=Qt.AlignCenter)
+    manual_laser_percent_layout.addWidget(manual_laser_percent_unit, 0, 2, alignment=Qt.AlignCenter)
+    manual_laser_percent_layout.addWidget(manual_laser_percent_btn, 1, 0, 1, 3, alignment=Qt.AlignCenter)
 
-    # ✅ Sửa lỗi: dùng lambda để gọi đúng lúc click
-    dac_button.clicked.connect(lambda: on_set_dac(dac_text_line, parent))
-
-    dac_layout.addWidget(dac_text_line, alignment=Qt.AlignHCenter)
-    dac_layout.addWidget(dac_button, alignment=Qt.AlignHCenter)
-    dac_layout.setAlignment(Qt.AlignCenter)
-    dac_layout.setSpacing(15)
-    dac_group.setLayout(dac_layout)
-    layout_laser.addWidget(dac_group, 3)
+    manual_laser_percent_group.setLayout(manual_laser_percent_layout)
+    layout_laser.addWidget(manual_laser_percent_group, 3)
 
     manual_box.setLayout(layout_laser)
     return manual_box, buttons
 
 
-def on_set_dac(dac_lineedit, parent):
+def on_set_dac(manual_laser_percent_text_line, parent):
     """
     Xử lý khi nhấn nút Set DAC
     """
     try:
-        val = int(dac_lineedit.text())
+        val = int(manual_laser_percent_text_line.text())
 
         if 0 <= val <= 100:
             global_var.manual_laser_percent = val

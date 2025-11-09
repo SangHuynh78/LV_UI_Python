@@ -3,7 +3,6 @@ from PyQt5.QtWidgets import QGroupBox, QVBoxLayout, QPushButton, QGridLayout, QL
 
 import global_var
 
-
 def create_auto_group_box(parent):
     """
     Tạo group box cho chế độ Auto Mode.

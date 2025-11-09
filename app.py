@@ -1,6 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication
 from main_window import CubeSat_Monitor
+from PyQt5.QtCore import Qt
 
 # CubeSat_App/
 # │
@@ -12,8 +13,10 @@ from main_window import CubeSat_Monitor
 # │   └── S_logo.png
 # └── __init__.py            # (tùy chọn)
 
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = CubeSat_Monitor()
-    window.show()
+    # window.show()
+    window.showMaximized()
     sys.exit(app.exec_())
