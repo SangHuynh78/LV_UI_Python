@@ -1,12 +1,16 @@
-from PyQt5.QtWidgets import QGroupBox, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLineEdit, QMessageBox, QSizePolicy
+from PyQt5.QtWidgets import (
+    QGroupBox, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton,
+    QLineEdit, QMessageBox, QSizePolicy
+)
 from PyQt5.QtCore import Qt
 import global_var
 
-def create_manual_box(parent):
+
+def create_manual_group_box(parent):
     manual_box = QGroupBox("🧭 Manual Control")
     layout_laser = QHBoxLayout()
 
-    # Grid of buttons
+    # --- Grid các nút vị trí laser ---
     grid_group = QGroupBox("Laser Positions")
     grid = QGridLayout()
     buttons = []
@@ -31,16 +35,18 @@ def create_manual_box(parent):
                     color: white;
                 }
             """)
-            btn.clicked.connect(lambda _, pos=idx, b=btn: parent.manual_exp_with_pos(pos, global_var.dac_value, b))
+            # Kết nối đến hàm manual_exp_with_pos của parent
+            btn.clicked.connect(lambda _, pos=idx, b=btn: manual_exp_with_pos(parent, pos, global_var.manual_laser_percent, b))
             grid.addWidget(btn, i, j)
             buttons.append(btn)
 
     grid_group.setLayout(grid)
     layout_laser.addWidget(grid_group, 7)
 
-    # DAC Control
+    # --- Nhóm điều khiển DAC ---
     dac_group = QGroupBox("DAC Control")
     dac_layout = QVBoxLayout()
+
     dac_text_line = QLineEdit()
     dac_text_line.setFixedWidth(200)
     dac_text_line.setPlaceholderText("Nhập giá trị DAC (0-100) %")
@@ -63,19 +69,8 @@ def create_manual_box(parent):
     """)
     dac_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
-    def on_set_dac():
-        try:
-            val = int(dac_text_line.text())
-            if 0 <= val <= 100:
-                global_var.dac_value = val
-                parent.log_box.append(f"[🎛️] DAC value set to {val}%")
-                print(f"Setting DAC value to {val}%")
-            else:
-                QMessageBox.warning(None, "Invalid Input", "Please enter a value between 0 and 100.")
-        except ValueError:
-            QMessageBox.warning(None, "Invalid Input", "Please enter a numeric value.")
-
-    dac_button.clicked.connect(on_set_dac)
+    # ✅ Sửa lỗi: dùng lambda để gọi đúng lúc click
+    dac_button.clicked.connect(lambda: on_set_dac(dac_text_line, parent))
 
     dac_layout.addWidget(dac_text_line, alignment=Qt.AlignHCenter)
     dac_layout.addWidget(dac_button, alignment=Qt.AlignHCenter)
@@ -87,3 +82,49 @@ def create_manual_box(parent):
     manual_box.setLayout(layout_laser)
     return manual_box, buttons
 
+
+def on_set_dac(dac_lineedit, parent):
+    """
+    Xử lý khi nhấn nút Set DAC
+    """
+    try:
+        val = int(dac_lineedit.text())
+
+        if 0 <= val <= 100:
+            global_var.manual_laser_percent = val
+            print(f"Setting DAC value to {val}%")
+            parent.log_box.append(f"[🎛️] DAC value set to {val}%")
+        else:
+            QMessageBox.warning(None, "Invalid Input", "Please enter a value between 0 and 100.")
+    except ValueError:
+        QMessageBox.warning(None, "Invalid Input", "Please enter a numeric value.")
+
+
+def manual_exp_with_pos(parent, pos, percent, btn):
+    """
+    Thực hiện thao tác thí nghiệm tại vị trí 'pos' với giá trị DAC 'percent'.
+    """
+    state = btn.isChecked()
+
+    if state:
+        if percent == 0:
+            QMessageBox.warning(None, "Invalid Input", "DAC value is 0%. Please set a valid value.")
+            btn.setChecked(False)
+            return
+        parent.log_box.append(f"[🧭] Bật thí nghiệm tại vị trí {pos}, DAC={percent}%")
+    else:
+        parent.log_box.append(f"[🧭] Tắt thí nghiệm tại vị trí {pos}")
+
+    # Cập nhật lại màu nút
+    btn.setStyleSheet(f"""
+        QPushButton {{
+            border-radius: 30px;
+            border: 2px solid black;
+            font-weight: bold;
+            background-color: {'#45a049' if state else 'white'};
+            color: {'white' if state else 'black'};
+        }}
+    """)
+
+    # TODO: gửi lệnh thực tế đến thiết bị nếu cần
+    # self.ssh_handler.send_exp_command(pos, state, percent)

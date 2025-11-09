@@ -9,7 +9,10 @@ import pyqtgraph as pg
 
 import global_var
 from ssh_handler import SSHHandler
-from exp_manual import create_manual_box
+from temp_ctrl import create_temperature_show_box, create_temperature_control_box
+from exp_manual import create_manual_group_box
+from exp_auto import create_auto_group_box
+
 
 DEFAULT_HOST = "192.168.1.11"
 DEFAULT_USER = "spec_cam"
@@ -56,29 +59,13 @@ class CubeSat_Monitor(QWidget):
     # CỘT 1: Nhiệt độ + Log
     # ----------------------------
     def init_col1(self, layout):
-        temp_group = QGroupBox("🌡️ Nhiệt độ Hiện tại")
-        temp_layout = QHBoxLayout()
-        col_a, col_b = QVBoxLayout(), QVBoxLayout()
-        self.temp_labels = []
+        # Cột 1 Hàng 1
+        self.temp_show_group = create_temperature_show_box(self)
 
-        for i in range(4):
-            lbl = QLabel(f"NTC{i+1}: {global_var.ntc_temp[i]} °C")
-            lbl.setAlignment(Qt.AlignCenter)
-            lbl.setStyleSheet("font-size:16px;")
-            col_a.addWidget(lbl)
-            self.temp_labels.append(lbl)
+        # Cột 1 Hàng 2
+        self.temp_ctrl_group = create_temperature_control_box(self)
 
-        for i in range(4, 8):
-            lbl = QLabel(f"NTC{i+1}: {global_var.ntc_temp[i]} °C")
-            lbl.setAlignment(Qt.AlignCenter)
-            lbl.setStyleSheet("font-size:16px;")
-            col_b.addWidget(lbl)
-            self.temp_labels.append(lbl)
-
-        temp_layout.addLayout(col_a)
-        temp_layout.addLayout(col_b)
-        temp_group.setLayout(temp_layout)
-
+        # Cột 1 Hàng 3
         log_group = QGroupBox("📝 Log / Trạng thái")
         self.log_box = QTextEdit()
         self.log_box.setReadOnly(True)
@@ -86,14 +73,15 @@ class CubeSat_Monitor(QWidget):
         v.addWidget(self.log_box)
         log_group.setLayout(v)
 
-        layout.addWidget(temp_group, 1)
-        layout.addWidget(log_group, 4)
+        layout.addWidget(self.temp_show_group, 1)
+        layout.addWidget(self.temp_ctrl_group, 1)
+        layout.addWidget(log_group, 2)
 
     # ----------------------------
     # CỘT 2: Biểu đồ + Điều khiển
     # ----------------------------
     def init_col2(self, layout):
-        # --- Biểu đồ ---
+        # --- Cột 2 hàng 1: Biểu đồ ---
         graph_group = QGroupBox("📊 Biểu đồ nhiệt độ 8 NTC")
         graph_layout = QVBoxLayout()
         self.graph = pg.PlotWidget(title="Nhiệt độ 8 NTC theo thời gian (°C)")
@@ -104,11 +92,11 @@ class CubeSat_Monitor(QWidget):
         graph_layout.addWidget(self.graph)
         graph_group.setLayout(graph_layout)
 
-        # --- Điều khiển ---
+        # --- Cột 2 hàng 2: Điều khiển ---
         exp_group = QGroupBox("🛠️ Điều khiển thí nghiệm")
         exp_layout = QVBoxLayout()
 
-        # Menu Manual/Auto
+        # --- Cột 2 hàng 2.1: Menu Manual/Auto ---
         menu_group = QGroupBox()
         menu_layout = QHBoxLayout()
         self.manual_radio = QRadioButton("Manual Mode")
@@ -120,21 +108,16 @@ class CubeSat_Monitor(QWidget):
         menu_group.setLayout(menu_layout)
         exp_layout.addWidget(menu_group)
 
-        # Manual box
-        self.manual_box, self.manual_buttons = create_manual_box(self)
+        # --- Cột 2 hàng 2.2: Manual box ---
+        self.manual_box, self.manual_buttons = create_manual_group_box(self)
         exp_layout.addWidget(self.manual_box, 8)
 
-        # Auto box
-        from PyQt5.QtWidgets import QPushButton
-        self.auto_box = QGroupBox("🤖 Auto Control")
-        auto_layout = QVBoxLayout()
-        auto_layout.addWidget(QPushButton("Chạy chu trình thí nghiệm"))
-        auto_layout.addWidget(QPushButton("Dừng chu trình"))
-        self.auto_box.setLayout(auto_layout)
-        self.auto_box.hide()
+        # --- Cột 2 hàng 2.3: Auto box ---
+        self.auto_box = create_auto_group_box(self)
         exp_layout.addWidget(self.auto_box, 8)
 
         exp_group.setLayout(exp_layout)
+
         layout.addWidget(graph_group, 2)
         layout.addWidget(exp_group, 3)
 
@@ -147,6 +130,7 @@ class CubeSat_Monitor(QWidget):
     # CỘT 3: SSH + Ảnh
     # ----------------------------
     def init_col3(self, layout):
+        # --- Cột 3 hàng 1: Kết nối SSH ---
         conn_group = QGroupBox("🔌 Kết nối SSH")
         v = QVBoxLayout()
         self.host_input = QLineEdit(DEFAULT_HOST)
@@ -167,6 +151,7 @@ class CubeSat_Monitor(QWidget):
         v.addWidget(self.status_label)
         conn_group.setLayout(v)
 
+        # --- Cột 3 hàng 2: Ảnh hệ thống ---
         img_group = QGroupBox("📷 Hình ảnh hệ thống")
         img_layout = QVBoxLayout()
         self.image_label = QLabel()
@@ -198,6 +183,19 @@ class CubeSat_Monitor(QWidget):
         self.timer.stop()
 
     # ----------------------------
+    # Nhiệt độ
+    # ----------------------------
+    def start_control_temperature(self):
+        try:
+            target_temp = float(self.temp_target.text())
+            global_var.target_temperature = target_temp
+            self.log_box.append(f"[🌡️] Nhiệt độ mục tiêu được đặt thành {target_temp} °C")
+            print(f"Target temperature set to {target_temp} °C")
+        except ValueError:
+            QMessageBox.warning(None, "Invalid Input", "Please enter a numeric value for temperature.") 
+
+
+    # ----------------------------
     # Biểu đồ
     # ----------------------------
     def update_graph(self):
@@ -220,58 +218,3 @@ class CubeSat_Monitor(QWidget):
             self.manual_box.hide()
             self.auto_box.show()
             self.log_box.append("[⚙️] Chuyển sang chế độ AUTO.")
-     
-    # ----------------------------
-    # Manual Function
-    # ----------------------------
-    def manual_exp_with_pos(self, pos, percent, btn):
-        """
-        Thực hiện thao tác thí nghiệm tại vị trí 'pos' với giá trị DAC 'percent'.
-
-        Args:
-            pos (int): Vị trí nút (1..36)
-            percent (int): Giá trị DAC hiện tại (%)
-            btn (QPushButton): Nút vừa nhấn
-
-        Hành vi:
-            - Bật hoặc tắt thí nghiệm tại vị trí 'pos'.
-            - Thay đổi màu nút dựa trên trạng thái (checked/unchecked).
-            - Ghi log trạng thái + giá trị DAC vào log_box.
-        """
-
-        state = btn.isChecked()  # True nếu đang được chọn
-        # Log ra thông tin vị trí + DAC
-        if state:
-            if global_var.dac_value == 0:
-                QMessageBox.warning(None, "Invalid Input", "Please enter a numeric value.")
-                # Reset nút về trạng thái unchecked
-                btn.setChecked(False)
-                return
-            self.log_box.append(f"[🧭] Bật thí nghiệm tại vị trí {pos}, DAC={percent}%")
-        else:
-            self.log_box.append(f"[🧭] Tắt thí nghiệm tại vị trí {pos}")
-        
-        # Cập nhật màu nút theo trạng thái
-        if state:
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #45a049;
-                    color: white;
-                    font-weight: bold;
-                    border-radius: 30px;
-                    border: 2px solid black;
-                }
-            """)
-        else:
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: white;
-                    color: black;
-                    font-weight: bold;
-                    border-radius: 30px;
-                    border: 2px solid black;
-                }
-            """)
-        
-        # TODO: Gửi lệnh thực tế đến thiết bị nếu cần
-        # self.ssh_handler.send_exp_command(pos, state, percent)
