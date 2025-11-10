@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import (
     QGroupBox, QGridLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QVBoxLayout, QMessageBox, QWidget
 )
 from PyQt5.QtCore import Qt
+import queue
 import global_var
 
 
@@ -157,3 +158,55 @@ def stop_control_temperature(parent):
 
     # TODO: gửi lệnh điều khiển đến CM4 hoặc MCU
     # parent.ssh_handler.send_command(f"STOP_TEMP_CTRL")
+
+
+def update_graph(parent):
+    """
+    Cập nhật biểu đồ 8 NTC từ data_queue.
+    parent: instance CubeSat_Monitor
+    """
+    updated = False
+    while True:
+        try:
+            msg = parent.data_queue.get_nowait()
+        except queue.Empty:
+            break
+
+        if isinstance(msg, dict):
+            # meta message: connection info
+            if "__meta__" in msg:
+                meta = msg.get("__meta__")
+                if meta == "conn_error":
+                    parent.log_box.append(f"[!] Kết nối lỗi: {msg.get('error')}")
+                    parent.conn_status.setText("❌ Kết nối lỗi")
+                elif meta == "connected":
+                    parent.conn_status.setText("✅ Đã kết nối")
+                continue
+
+            temps = msg.get("temps")
+            if temps and isinstance(temps, (list, tuple)):
+                for i in range(8):
+                    val = temps[i] if i < len(temps) else 0
+                    global_var.ntc_temp[i].append(float(val))
+                    global_var.ntc_temp[i] = global_var.ntc_temp[i][-120:]
+            else:
+                if "temp" in msg:
+                    t = float(msg["temp"])
+                    global_var.ntc_temp[0].append(t)
+                    global_var.ntc_temp[0] = global_var.ntc_temp[0][-120:]
+            updated = True
+
+    if updated:
+        if not hasattr(parent, "x_data") or parent.x_data is None:
+            parent.x_data = []
+        parent.index += 1
+        parent.x_data.append(parent.index)
+        x_slice = parent.x_data[-120:]
+
+        for i in range(8):
+            y = global_var.ntc_temp[i][-120:] if global_var.ntc_temp[i] else []
+            parent.curves[i].setData(x_slice[-len(y):], y)
+            try:
+                parent.temp_labels[i].setText(f"NTC{i+1}: {y[-1]:.2f} °C")
+            except Exception:
+                pass

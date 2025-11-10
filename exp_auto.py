@@ -1,5 +1,5 @@
 # exp_auto.py
-from PyQt5.QtWidgets import QGroupBox, QVBoxLayout, QPushButton, QGridLayout, QLineEdit, QLabel
+from PyQt5.QtWidgets import QGroupBox, QVBoxLayout, QHBoxLayout, QPushButton, QGridLayout, QLineEdit, QLabel
 
 import global_var
 
@@ -8,8 +8,10 @@ def create_auto_group_box(parent):
     Tạo group box cho chế độ Auto Mode.
     """
     exp_auto_group = QGroupBox("🤖 Auto Control")
-
-    exp_auto_layout = QGridLayout()
+    exp_auto_layout = QHBoxLayout()
+    # --- Cột 1: Bố trí các ô nhập liệu và nút START ---
+    exp_auto_profile_group = QGroupBox("Experiment Profile")
+    exp_auto_profile_layout = QGridLayout()
 
     # --- Các ô nhập liệu ---
     parent.exp_sample_rate = QLineEdit()
@@ -32,28 +34,59 @@ def create_auto_group_box(parent):
     # Gắn sự kiện cho nút START
     start_btn.clicked.connect(start_experiment)
 
-    # --- Bố trí exp_auto_layout ---
-    exp_auto_layout.addWidget(QLabel("Sample Rate:"),          0, 0)
-    exp_auto_layout.addWidget(parent.exp_sample_rate,          0, 1)
+    # --- Bố trí exp_auto_profile_layout ---
+    exp_auto_profile_layout.addWidget(QLabel("Sample Rate:"),          0, 0)
+    exp_auto_profile_layout.addWidget(parent.exp_sample_rate,          0, 1)
 
-    exp_auto_layout.addWidget(QLabel("Position:"),              1, 0)
-    exp_auto_layout.addWidget(parent.exp_position,              1, 1)
+    exp_auto_profile_layout.addWidget(QLabel("Position:"),              1, 0)
+    exp_auto_profile_layout.addWidget(parent.exp_position,              1, 1)
 
-    exp_auto_layout.addWidget(QLabel("Laser Percent:"),         2, 0)
-    exp_auto_layout.addWidget(parent.exp_laser_percent,         2, 1)
+    exp_auto_profile_layout.addWidget(QLabel("Laser Percent:"),         2, 0)
+    exp_auto_profile_layout.addWidget(parent.exp_laser_percent,         2, 1)
 
-    exp_auto_layout.addWidget(QLabel("Pre Time:"),             3, 0)
-    exp_auto_layout.addWidget(parent.exp_pre_time,              3, 1)
-    exp_auto_layout.addWidget(QLabel("Experiment Time:"),      4, 0)
-    exp_auto_layout.addWidget(parent.exp_experiment_time,      4, 1)
-    exp_auto_layout.addWidget(QLabel("Post Time:"),            5, 0)
-    exp_auto_layout.addWidget(parent.exp_post_time,             5, 1)
-    exp_auto_layout.addWidget(start_btn,                        7, 0, 1, 2)
+    exp_auto_profile_layout.addWidget(QLabel("Pre Time:"),             3, 0)
+    exp_auto_profile_layout.addWidget(parent.exp_pre_time,              3, 1)
+    exp_auto_profile_layout.addWidget(QLabel("Experiment Time:"),      4, 0)
+    exp_auto_profile_layout.addWidget(parent.exp_experiment_time,      4, 1)
+    exp_auto_profile_layout.addWidget(QLabel("Post Time:"),            5, 0)
+    exp_auto_profile_layout.addWidget(parent.exp_post_time,             5, 1)
+    exp_auto_profile_layout.addWidget(start_btn,                        7, 0, 1, 2)
 
+    exp_auto_profile_group.setLayout(exp_auto_profile_layout)
+
+    # --- Cột 2: Bố trí exp_auto_view_group ---
+    # 36 ô hiển thị trạng thái vị trí laser
+    exp_auto_view_group = QGroupBox("Experiment View")
+    exp_auto_view_layout = QGridLayout()
+    parent.exp_auto_position_labels = []
+    for i in range(6):
+        for j in range(6):
+            idx = i * 6 + j + 1  # số từ 1->36
+            btn = QPushButton(str(idx))
+            btn.setFixedSize(30, 30)
+            btn.setCheckable(False)
+            btn.setEnabled(False)  # KHÔNG thể bấm vào
+            btn.setStyleSheet("""
+                QPushButton {
+                    border-radius: 15px;
+                    border: 2px solid black;
+                    background-color: white;
+                    color: black;
+                    font-weight: bold;
+                }
+            """)
+            exp_auto_view_layout.addWidget(btn, i, 5-j)
+            parent.exp_auto_position_labels.append(btn)
+
+    exp_auto_view_group.setLayout(exp_auto_view_layout)
+    # --- Bố trí chính cho exp_auto_group ---
+    
+    exp_auto_layout.addWidget(exp_auto_profile_group, 6)
+    exp_auto_layout.addWidget(exp_auto_view_group, 4)
+    exp_auto_group.setLayout(exp_auto_layout)
+    
     # Ẩn group box ban đầu
     exp_auto_group.hide()
-
-    exp_auto_group.setLayout(exp_auto_layout)
     return exp_auto_group
 
 def start_experiment(self):

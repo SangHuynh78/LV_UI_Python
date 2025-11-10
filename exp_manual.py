@@ -19,11 +19,11 @@ def create_manual_group_box(parent):
         for j in range(6):
             idx = i * 6 + j + 1
             btn = QPushButton(str(idx))
-            btn.setFixedSize(60, 60)
+            btn.setFixedSize(40, 40)
             btn.setCheckable(True)
             btn.setStyleSheet("""
                 QPushButton {
-                    border-radius: 30px;
+                    border-radius: 20px;
                     border: 2px solid black;
                     background-color: white;
                     color: black;
@@ -35,9 +35,11 @@ def create_manual_group_box(parent):
                     color: white;
                 }
             """)
-            # Kết nối đến hàm manual_exp_with_pos của parent
+            # Kết nối đến hàm manual_exp_with_pos
             btn.clicked.connect(lambda _, pos=idx, b=btn: manual_exp_with_pos(parent, pos, global_var.manual_laser_percent, b))
-            grid.addWidget(btn, i, j)
+            
+            # Chèn vào grid, đảo cột: 5-j để cột 0 bên trái → cột 5 bên phải
+            grid.addWidget(btn, i, 5 - j)
             buttons.append(btn)
 
     grid_group.setLayout(grid)
@@ -121,13 +123,11 @@ def manual_exp_with_pos(parent, pos, percent, btn):
 
     # Cập nhật lại màu nút
     btn.setStyleSheet(f"""
-        QPushButton {{
-            border-radius: 30px;
-            border: 2px solid black;
-            font-weight: bold;
-            background-color: {'#45a049' if state else 'white'};
-            color: {'white' if state else 'black'};
-        }}
+        border-radius: 25px;
+        border: 2px solid black;
+        font-weight: bold;
+        background-color: {'#45a049' if state else 'white'};
+        color: {'white' if state else 'black'};
     """)
 
     # TODO: gửi lệnh thực tế đến thiết bị nếu cần
