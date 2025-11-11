@@ -10,6 +10,66 @@ def create_manual_group_box(parent):
     manual_box = QGroupBox("🧭 Manual Control")
     layout_laser = QHBoxLayout()
 
+    # --- Nhóm điều khiển Laser Intensity ---
+    manual_laser_percent_group = QGroupBox("Laser Intensity")
+    manual_laser_percent_layout = QVBoxLayout()
+
+    # Vdac info
+    manual_laser_vDAC_max = QLabel("Vdac(max) = 3.3V")
+    manual_laser_vDAC_max.setAlignment(Qt.AlignCenter)
+
+    # Label
+    manual_laser_percent_label = QLabel("Laser Percent")
+    manual_laser_percent_label.setAlignment(Qt.AlignCenter)
+
+    # Nhóm nhập giá trị và đơn vị
+    input_layout = QHBoxLayout()
+    manual_laser_percent_text_line = QLineEdit()
+    manual_laser_percent_text_line.setFixedWidth(140)
+    manual_laser_percent_text_line.setFixedHeight(35)
+    manual_laser_percent_text_line.setPlaceholderText("Type laser intensity (0-100)")
+    manual_laser_percent_unit = QLabel("%")
+    manual_laser_percent_unit.setAlignment(Qt.AlignVCenter)
+    input_layout.addStretch()
+    input_layout.addWidget(manual_laser_percent_text_line)
+    input_layout.addWidget(manual_laser_percent_unit)
+    input_layout.addStretch()
+
+    # Nút bấm
+    manual_laser_percent_btn = QPushButton("Set Intensity")
+    manual_laser_percent_btn.setFixedSize(200, 50)
+    manual_laser_percent_btn.setStyleSheet("""
+        QPushButton {
+            background-color: #64B5F6;  /* Xanh nhạt */
+            color: white;
+            font-weight: bold;
+            border-radius: 20px;
+            border: 2px solid #1E88E5;
+        }
+        QPushButton:hover {
+            background-color: #42A5F5;  /* Khi rê chuột vào */
+        }
+        QPushButton:pressed {
+            background-color: #1E88E5;  /* Khi nhấn */
+            border: 2px solid #1565C0;
+        }
+    """)
+    manual_laser_percent_btn.clicked.connect(lambda: on_set_dac(manual_laser_percent_text_line, parent))
+
+    # Ghép bố cục tổng
+    manual_laser_percent_layout.addSpacing(5)
+    manual_laser_percent_layout.addWidget(manual_laser_vDAC_max)
+    manual_laser_percent_layout.addSpacing(15)
+    manual_laser_percent_layout.addWidget(manual_laser_percent_label)
+    manual_laser_percent_layout.addSpacing(15)
+    manual_laser_percent_layout.addLayout(input_layout)
+    manual_laser_percent_layout.addSpacing(20)
+    manual_laser_percent_layout.addWidget(manual_laser_percent_btn, alignment=Qt.AlignCenter)
+    manual_laser_percent_layout.addStretch()
+
+    manual_laser_percent_group.setLayout(manual_laser_percent_layout)
+
+
     # --- Grid các nút vị trí laser ---
     grid_group = QGroupBox("Laser Positions")
     grid = QGridLayout()
@@ -36,54 +96,19 @@ def create_manual_group_box(parent):
                 }
             """)
             # Kết nối đến hàm manual_exp_with_pos
-            btn.clicked.connect(lambda _, pos=idx, b=btn: manual_exp_with_pos(parent, pos, global_var.manual_laser_percent, b))
+            # btn.clicked.connect(lambda _, pos=idx, b=btn: manual_exp_with_pos(parent, pos, global_var.manual_laser_percent, b))
+            btn.clicked.connect(lambda _: abc(parent, 1, 2, 3))
             
+
             # Chèn vào grid, đảo cột: 5-j để cột 0 bên trái → cột 5 bên phải
             grid.addWidget(btn, i, 5 - j)
             buttons.append(btn)
 
+
     grid_group.setLayout(grid)
-    layout_laser.addWidget(grid_group, 7)
 
-    # --- Nhóm điều khiển Laser Intensity ---
-    manual_laser_percent_group = QGroupBox("Laser Intensity Control")
-    manual_laser_percent_layout = QGridLayout()
-
-    manual_laser_percent_label = QLabel("Laser Intensity")
-
-    manual_laser_percent_text_line = QLineEdit()
-    manual_laser_percent_text_line.setFixedWidth(180)
-    manual_laser_percent_text_line.setPlaceholderText("Type laser intensity (0-100)")
-
-    manual_laser_percent_unit = QLabel("%")
-    manual_laser_percent_unit.setFixedWidth(15)
-
-    manual_laser_percent_btn = QPushButton("Set Intensity")
-    manual_laser_percent_btn.setFixedWidth(100)
-    manual_laser_percent_btn.setFixedHeight(60)
-    manual_laser_percent_btn.setStyleSheet("""
-        QPushButton {
-            background-color: #2196F3;
-            color: white;
-            font-weight: bold;
-            border-radius: 8px;
-            border: 2px solid black;
-        }
-        QPushButton:pressed {
-            background-color: #0b7dda;
-            border: 2px solid black;
-        }
-    """)
-    manual_laser_percent_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    manual_laser_percent_btn.clicked.connect(lambda: on_set_dac(manual_laser_percent_text_line, parent))
-    
-    manual_laser_percent_layout.addWidget(manual_laser_percent_label, 0, 0, alignment=Qt.AlignCenter)
-    manual_laser_percent_layout.addWidget(manual_laser_percent_text_line, 0, 1, alignment=Qt.AlignCenter)
-    manual_laser_percent_layout.addWidget(manual_laser_percent_unit, 0, 2, alignment=Qt.AlignCenter)
-    manual_laser_percent_layout.addWidget(manual_laser_percent_btn, 1, 0, 1, 3, alignment=Qt.AlignCenter)
-
-    manual_laser_percent_group.setLayout(manual_laser_percent_layout)
-    layout_laser.addWidget(manual_laser_percent_group, 3)
+    layout_laser.addWidget(manual_laser_percent_group, 2)
+    layout_laser.addWidget(grid_group, 8)
 
     manual_box.setLayout(layout_laser)
     return manual_box, buttons
@@ -132,3 +157,8 @@ def manual_exp_with_pos(parent, pos, percent, btn):
 
     # TODO: gửi lệnh thực tế đến thiết bị nếu cần
     # self.ssh_handler.send_exp_command(pos, state, percent)
+
+def abc(parent, x, y, z):
+    # Nếu server đang chạy → gửi lệnh cho client
+    if hasattr(parent, "tcp_server") and parent.tcp_server:
+        parent.tcp_server.send_command("abc", x=x, y=y, z=z)

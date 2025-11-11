@@ -2,22 +2,20 @@
 
 import threading
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QGroupBox, QTextEdit, QRadioButton, QMessageBox,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,  QPushButton,
+    QGroupBox, QTextEdit,
 )
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtCore import QTimer, Qt
 import pyqtgraph as pg
 
-import global_var
-from ssh_handler import SSHHandler, create_ssh_group_box
-from temp_ctrl import create_temperature_show_box, create_temperature_control_box, update_graph
+from temp_ctrl import create_temperature_show_box, create_temperature_graph_box, create_temperature_control_box, update_graph
 from exp_manual import create_manual_group_box
 from exp_auto import create_auto_group_box
 
 import queue
-from socket_handler import TCPServer, create_socket_group_box
-
+from socket_handler import create_socket_group_box
+import global_var
 
 class CubeSat_Monitor(QWidget):
     def keyPressEvent(self, event):
@@ -30,14 +28,40 @@ class CubeSat_Monitor(QWidget):
             else:
                 self.showNormal()
 
-        
+    # def process_queue(self):
+    #     try:
+    #         while not self.data_queue.empty():
+    #             msg = self.data_queue.get_nowait()
+    #             if "__meta__" in msg:
+    #                 meta = msg["__meta__"]
+
+    #                 # Chỉ xử lý client_hello 1 lần
+    #                 if meta == "client_hello" and not self.state.get("tcp_connected", False):
+    #                     self.log_box.append("[Client connected]")
+    #                     self.state["tcp_connected"] = True
+    #                     if hasattr(self, "start_temp_ctrl_btn"):
+    #                         self.start_temp_ctrl_btn.setEnabled(True)
+
+    #                 # Hiển thị log server
+    #                 elif not meta.startswith("client_hello"):
+    #                     if "Server started" in meta or "Client connected" in meta or "Client disconnected" in meta:
+    #                         self.log_box.append(meta.replace("[", "").replace("]", ""))
+
+    #     except queue.Empty:
+    #         pass
 
     def __init__(self):
         super().__init__()
         self.setWindowIcon(QIcon("img/S_logo.png"))
-        self.setWindowTitle("CubeSat System")
+        self.setWindowTitle("Sang Huynh")
         self.resize(1920, 1080)
         self.full_secreen = True
+
+        self.state = {
+            "tcp_connected": False,
+            "temp_control_running": False,
+            # sau này có thể thêm các trạng thái khác
+        }
 
         # --- Dữ liệu nhiệt độ ---
         self.x_data = []
@@ -55,6 +79,7 @@ class CubeSat_Monitor(QWidget):
         self.tcp_host = "0.0.0.0"
         self.tcp_port = 5000
         self.data_queue = queue.Queue()
+        self.tcp_server = None
 
         # ========= CỘT 1 =========
         self.init_col1(col1_layout)
@@ -65,11 +90,39 @@ class CubeSat_Monitor(QWidget):
         # ========= CỘT 3 =========
         self.init_col3(col3_layout)
 
-        # --- Timer cập nhật biểu đồ ---
-        self.timer = QTimer()
-        self.timer.timeout.connect(lambda: update_graph(self))
-        self.timer.start(50)  # cập nhật mỗi 50ms
+        # --- Timer check tcp_connect ---
+        self.app_block_timer = QTimer()
+        self.app_block_timer.timeout.connect(self.tcp_connect_block_app_check)
+        self.app_block_timer.start(100)  # cập nhật mỗi 100ms
 
+        # --- Timer cập nhật biểu đồ ---
+        self.graph_timer = QTimer()
+        self.graph_timer.timeout.connect(lambda: update_graph(self))
+        self.graph_timer.start(100)  # cập nhật mỗi 100ms
+
+        # # Timer check queue
+        # self.queue_timer = QTimer(self)
+        # self.queue_timer.timeout.connect(lambda: self.process_queue())
+        # self.queue_timer.start(100)  # 100ms/lần
+    
+    def closeEvent(self, event):
+        self.app_block_timer.stop()
+        self.tigraph_timermer.stop()
+        # self.queue_timer.stop()
+        if hasattr(self, "tcp_server") and self.tcp_server:
+            try:
+                self.tcp_server.stop()
+            except:
+                pass
+        event.accept()
+
+    def tcp_connect_block_app_check(self):
+        if global_var.tcp_connect_changed == True:
+            if global_var.tcp_connected == True: # UNLOCK
+                self.start_temp_ctrl_btn.setEnabled(True)
+            else: # LOCK
+                self.start_temp_ctrl_btn.setEnabled(False)
+            global_var.tcp_connect_changed = False
     # ----------------------------
     # CỘT 1: Nhiệt độ + Log
     # ----------------------------
@@ -81,7 +134,7 @@ class CubeSat_Monitor(QWidget):
         self.temp_ctrl_group = create_temperature_control_box(self)
 
         # Cột 1 Hàng 3
-        log_group = QGroupBox("📝 Log / Trạng thái")
+        log_group = QGroupBox("📝 Log")
         self.log_box = QTextEdit()
         self.log_box.setReadOnly(True)
         conn_ssh_layout = QVBoxLayout()
@@ -96,56 +149,18 @@ class CubeSat_Monitor(QWidget):
     # CỘT 2: Biểu đồ + Điều khiển
     # ----------------------------
     def init_col2(self, layout):
-        # --- Cột 2 hàng 1: Biểu đồ ---
-        graph_group = QGroupBox("📊 Biểu đồ nhiệt độ 8 NTC")
-        graph_layout = QVBoxLayout()
-        self.graph = pg.PlotWidget(title="Nhiệt độ 8 NTC theo thời gian (°C)")
-        self.graph.showGrid(x=True, y=True)
-        self.graph.setLabel('left', 'Nhiệt độ (°C)')
-        self.graph.setLabel('bottom', 'Thời gian (chu kỳ)')
-        self.graph.addLegend(offset=(10, 10))
-        graph_layout.addWidget(self.graph)
-        graph_group.setLayout(graph_layout)
+        # --- Cột 2 hàng 1: Đồ thị nhiệt độ ---
+        temp_graph_group = create_temperature_graph_box(self)
 
         # --- Cột 2 hàng 2: Điều khiển ---
-        exp_group = QGroupBox("🛠️ Điều khiển thí nghiệm")
+        exp_group = QGroupBox("🛠️ Experiment Control")
         exp_layout = QHBoxLayout()
 
-        # --- Cột 2 hàng 2 cột 1: Manual or Auto ---
-        exp_choice_mode_group = QGroupBox("Chế độ")
-        exp_choice_mode_layout = QVBoxLayout()  
-        self.manual_toggle_btn = QPushButton("Manual")
-        self.manual_toggle_btn.setFixedSize(60, 200)
-        self.manual_toggle_btn.setCheckable(True)
-        self.manual_toggle_btn.setChecked(True)
-        self.manual_toggle_btn.setStyleSheet(f"""
-            border-radius: 20px;
-            border: 2px solid black;
-            font-weight: bold;
-            background-color: {'#0b7dda'};
-            color: {'white'};
-        """)
-        self.manual_toggle_btn.clicked.connect(lambda: self.toggle_mode(True))
-
-        self.auto_toggle_btn = QPushButton("Auto")
-        self.auto_toggle_btn.setFixedSize(60, 200)
-        self.auto_toggle_btn.setCheckable(True)
-        self.auto_toggle_btn.setChecked(False)
-        self.auto_toggle_btn.setStyleSheet(f"""
-            border-radius: 20px;
-            border: 2px solid black;
-            font-weight: bold;
-            background-color: {'white'};
-            color: {'black'};
-        """)
-        self.auto_toggle_btn.clicked.connect(lambda: self.toggle_mode(False))
-
-        exp_choice_mode_layout.addWidget(self.manual_toggle_btn, alignment=Qt.AlignTop)
-        exp_choice_mode_layout.addWidget(self.auto_toggle_btn, alignment=Qt.AlignTop)
-        exp_choice_mode_group.setLayout(exp_choice_mode_layout)
+        # # --- Cột 2 hàng 2 cột 1: Manual or Auto ---
+        exp_choice_mode_group = self.create_mode_toggle_box()
 
         # --- Cột 2 hàng 2 Cột 2: Manual + Auto ---
-        exp_control_group = QGroupBox("Chế độ Thí nghiệm")
+        exp_control_group = QGroupBox()
         exp_control_layout = QHBoxLayout()
         
         # --- Cột 2 hàng 2 Cột 2 Option 1: Manual box ---
@@ -162,7 +177,7 @@ class CubeSat_Monitor(QWidget):
         exp_layout.addWidget(exp_control_group, 11)
         exp_group.setLayout(exp_layout)
 
-        layout.addWidget(graph_group, 1)
+        layout.addWidget(temp_graph_group, 1)
         layout.addWidget(exp_group, 1)
 
         for i in range(8):
@@ -175,11 +190,10 @@ class CubeSat_Monitor(QWidget):
     # ----------------------------
     def init_col3(self, layout):
         # --- Cột 3 hàng 1: Kết nối SSH ---
-        # conn_ssh_group = create_ssh_group_box(self)
         conn_ssh_group = create_socket_group_box(self)
 
         # --- Cột 3 hàng 2: Ảnh hệ thống ---
-        img_group = QGroupBox("📷 Hình ảnh hệ thống")
+        img_group = QGroupBox("📷 System Image")
         img_layout = QVBoxLayout()
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)
@@ -188,40 +202,50 @@ class CubeSat_Monitor(QWidget):
         img_layout.addWidget(self.image_label)
         img_group.setLayout(img_layout)
 
-        layout.addWidget(conn_ssh_group, 2)
-        layout.addWidget(img_group, 4)
+        layout.addWidget(conn_ssh_group, 1)
+        layout.addWidget(img_group, 5)
 
 
 
-    # ----------------------------
-    # Nhiệt độ
-    # ----------------------------
-    def start_control_temperature(self):
-        try:
-            target_temp = float(self.temp_target.text())
-            global_var.target_temperature = target_temp
-            self.log_box.append(f"[🌡️] Nhiệt độ mục tiêu được đặt thành {target_temp} °C")
-            print(f"Target temperature set to {target_temp} °C")
-        except ValueError:
-            QMessageBox.warning(None, "Invalid Input", "Please enter a numeric value for temperature.") 
-
-
-    def closeEvent(self, event):
-        self.timer.stop()
-        try:
-            self.tcp_server.stop()
-        except Exception:
-            pass
-        event.accept()
 
     # ----------------------------
     # Manual + Auto
     # ----------------------------
+    def create_mode_toggle_box(self):
+        """
+        Tạo group box chứa 2 nút Manual / Auto dạng toggle.
+        """
+        mode_group = QGroupBox("Chế độ Thí nghiệm")
+        layout = QVBoxLayout()
+        # --- Manual button ---
+        self.manual_toggle_btn = QPushButton("Manual")
+        self.manual_toggle_btn.setFixedSize(60, 200)
+        self.manual_toggle_btn.setCheckable(True)
+        self.manual_toggle_btn.setChecked(True)
+        self.manual_toggle_btn.clicked.connect(lambda: self.toggle_mode(True))
+        # --- Auto button ---
+        self.auto_toggle_btn = QPushButton("Auto")
+        self.auto_toggle_btn.setFixedSize(60, 200)
+        self.auto_toggle_btn.setCheckable(True)
+        self.auto_toggle_btn.setChecked(False)
+        self.auto_toggle_btn.clicked.connect(lambda: self.toggle_mode(False))
+        # --- Thêm vào layout ---
+        layout.addWidget(self.manual_toggle_btn, alignment=Qt.AlignTop)
+        layout.addWidget(self.auto_toggle_btn, alignment=Qt.AlignTop)
+        mode_group.setLayout(layout)
+        # --- Khởi tạo style và hiển thị lần đầu ---
+        self.toggle_mode(True)
+        return mode_group
+
+
     def toggle_mode(self, manual_active: bool):
+        """
+        Bật/tắt chế độ Manual / Auto
+        """
+        # Cập nhật trạng thái checked
         self.manual_toggle_btn.setChecked(manual_active)
         self.auto_toggle_btn.setChecked(not manual_active)
-
-        # Cập nhật style nút
+        # --- Cập nhật style nút ---
         def update_style(button, active):
             button.setStyleSheet(f"""
                 border-radius: 20px;
@@ -230,12 +254,9 @@ class CubeSat_Monitor(QWidget):
                 background-color: {'#0b7dda' if active else 'white'};
                 color: {'white' if active else 'black'};
             """)
-
         update_style(self.manual_toggle_btn, manual_active)
         update_style(self.auto_toggle_btn, not manual_active)
-
-        self.manual_box.setVisible(manual_active)
-        self.auto_box.setVisible(not manual_active)
-
-        mode_text = "MANUAL" if manual_active else "AUTO"
-        self.log_box.append(f"[⚙️] Chuyển sang chế độ {mode_text}.")
+        # --- Hiển thị box tương ứng ---
+        if hasattr(self, "manual_box") and hasattr(self, "auto_box"):
+            self.manual_box.setVisible(manual_active)
+            self.auto_box.setVisible(not manual_active)

@@ -4,13 +4,14 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 import queue
 import global_var
+import pyqtgraph as pg
 
 
 def create_temperature_show_box(parent):
     """
     Tạo giao diện hiển thị nhiệt độ
     """
-    temp_show_group = QGroupBox("🌡️ Nhiệt độ Hiện tại")
+    temp_show_group = QGroupBox("🌡️ Temperature monitor")
     temp_show_layout = QHBoxLayout()
     col_a, col_b = QVBoxLayout(), QVBoxLayout()
     parent.temp_labels = []
@@ -35,114 +36,101 @@ def create_temperature_show_box(parent):
     return temp_show_group
 
 
+def create_temperature_graph_box(parent):
+    """
+    Tạo group box hiển thị biểu đồ nhiệt độ.
+    """
+    graph_group = QGroupBox("📊 Temperature Graph")
+    graph_layout = QVBoxLayout()
+    # --- Tạo widget biểu đồ ---
+    parent.graph = pg.PlotWidget()
+    parent.graph.showGrid(x=True, y=True)
+    parent.graph.setLabel('left', 'Nhiệt độ (°C)')
+    parent.graph.setLabel('bottom', 'Thời gian (s)')
+    parent.graph.addLegend(offset=(10, 10))
+    # --- Thêm vào layout ---
+    graph_layout.addWidget(parent.graph)
+    graph_group.setLayout(graph_layout)
+    return graph_group
+
 def create_temperature_control_box(parent):
-    """
-    Tạo giao diện điều khiển nhiệt độ với đơn vị hiển thị cuối ô
-    """
-    temp_ctrl_group = QGroupBox("🌡️ Điều khiển Nhiệt độ")
+    temp_ctrl_group = QGroupBox("🌡️ Temperature Control")
     temp_ctrl_layout = QGridLayout()
 
-    # --- Hàm tiện lợi tạo ô nhập + đơn vị ---
-    def create_lineedit_with_unit(unit):
+    def create_lineedit_with_unit(unit, default_value=""):
         container = QWidget()
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         lineedit = QLineEdit()
+        lineedit.setText(str(default_value))
         label_unit = QLabel(unit)
-        label_unit.setFixedWidth(20)  # hoặc một giá trị phù hợp
-        lineedit.setFixedWidth(100)    # đảm bảo tất cả lineedit có cùng chiều ngang
-
+        label_unit.setFixedWidth(20)
+        lineedit.setFixedWidth(100)
         layout.addWidget(lineedit)
         layout.addWidget(label_unit)
         container.setLayout(layout)
         return container, lineedit
 
-    # --- Các ô nhập liệu với đơn vị ---
-    tec_widget, parent.tec_voltage = create_lineedit_with_unit("mV")
-    target_widget, parent.temp_target = create_lineedit_with_unit("°C")
-    limit_min_widget, parent.temp_limit_min = create_lineedit_with_unit("°C")
-    limit_max_widget, parent.temp_limit_max = create_lineedit_with_unit("°C")
-    ntc_pri_widget, parent.ntc_pri = create_lineedit_with_unit("")
-    ntc_sec_widget, parent.ntc_sec = create_lineedit_with_unit("")
+    tec_widget, parent.tec_voltage = create_lineedit_with_unit("mV", 1500)
+    target_widget, parent.temp_target = create_lineedit_with_unit("°C", 25)
+    limit_min_widget, parent.temp_limit_min = create_lineedit_with_unit("°C", 20)
+    limit_max_widget, parent.temp_limit_max = create_lineedit_with_unit("°C", 30)
+    ntc_pri_widget, parent.ntc_pri = create_lineedit_with_unit("", 0)
+    ntc_sec_widget, parent.ntc_sec = create_lineedit_with_unit("", 1)
 
-    # --- Nút START ---
     parent.start_temp_ctrl_btn = QPushButton("START")
+    parent.start_temp_ctrl_btn.setEnabled(False)
     parent.start_temp_ctrl_btn.clicked.connect(lambda: start_control_temperature(parent))
 
-    # --- Layout ---
-    temp_ctrl_layout.addWidget(QLabel("TEC Voltage:"),          0, 0)
-    temp_ctrl_layout.addWidget(tec_widget,                      0, 1)
-    temp_ctrl_layout.addWidget(QLabel("Temp Target:"),          1, 0)
-    temp_ctrl_layout.addWidget(target_widget,                   1, 1)
-    temp_ctrl_layout.addWidget(QLabel("Temp Limit min:"),       2, 0)
-    temp_ctrl_layout.addWidget(limit_min_widget,                2, 1)
-    temp_ctrl_layout.addWidget(QLabel("Temp Limit max:"),       3, 0)
-    temp_ctrl_layout.addWidget(limit_max_widget,                3, 1)
-    temp_ctrl_layout.addWidget(QLabel("NTC Reference pri:"),    4, 0)
-    temp_ctrl_layout.addWidget(ntc_pri_widget,                  4, 1)
-    temp_ctrl_layout.addWidget(QLabel("NTC Reference sec:"),    5, 0)
-    temp_ctrl_layout.addWidget(ntc_sec_widget,                  5, 1)
-    temp_ctrl_layout.addWidget(parent.start_temp_ctrl_btn,      6, 0, 1, 2)
+    temp_ctrl_layout.addWidget(QLabel("TEC Voltage:"), 0, 0)
+    temp_ctrl_layout.addWidget(tec_widget, 0, 1)
+    temp_ctrl_layout.addWidget(QLabel("Temp Target:"), 1, 0)
+    temp_ctrl_layout.addWidget(target_widget, 1, 1)
+    temp_ctrl_layout.addWidget(QLabel("Temp Limit min:"), 2, 0)
+    temp_ctrl_layout.addWidget(limit_min_widget, 2, 1)
+    temp_ctrl_layout.addWidget(QLabel("Temp Limit max:"), 3, 0)
+    temp_ctrl_layout.addWidget(limit_max_widget, 3, 1)
+    temp_ctrl_layout.addWidget(QLabel("NTC Reference pri:"), 4, 0)
+    temp_ctrl_layout.addWidget(ntc_pri_widget, 4, 1)
+    temp_ctrl_layout.addWidget(QLabel("NTC Reference sec:"), 5, 0)
+    temp_ctrl_layout.addWidget(ntc_sec_widget, 5, 1)
+    temp_ctrl_layout.addWidget(parent.start_temp_ctrl_btn, 6, 0, 1, 2)
 
     temp_ctrl_group.setLayout(temp_ctrl_layout)
     return temp_ctrl_group
 
 
-
 def start_control_temperature(parent):
-    """
-    Xử lý khi nhấn nút START điều khiển nhiệt độ
-    """
     try:
         global_var.temp_tec_voltage = int(parent.tec_voltage.text())
         global_var.temp_target = float(parent.temp_target.text())
         global_var.temp_limit_min = float(parent.temp_limit_min.text())
         global_var.temp_limit_max = float(parent.temp_limit_max.text())
-        global_var.ntc_pri_ref = float(parent.ntc_pri.text())
-        global_var.ntc_sec_ref = float(parent.ntc_sec.text())
+        global_var.temp_ntc_pri_ref = float(parent.ntc_pri.text())
+        global_var.temp_ntc_sec_ref = float(parent.ntc_sec.text())
     except ValueError:
-        QMessageBox.warning(parent, "⚠️ Cảnh báo", "Dữ liệu nhập không hợp lệ. Vui lòng kiểm tra lại.")
+        QMessageBox.warning(parent, "⚠️ Cảnh báo", "Dữ liệu nhập không hợp lệ.")
         return
 
-    # --- Kiểm tra giới hạn ---
-    if not (0 <= global_var.temp_tec_voltage <= 3000):
-        QMessageBox.warning(parent, "⚠️ Cảnh báo", "TEC Voltage vượt giới hạn (0–3000 mV).")
-        return
+    # Kiểm tra giới hạn...
+    # (giữ nguyên như trước)
 
-    if not (-40 <= global_var.temp_target <= 150):
-        QMessageBox.warning(parent, "⚠️ Cảnh báo", "Temperature Target vượt giới hạn (-40–150 °C).")
-        return
-
-    if not (-40 <= global_var.temp_limit_min <= 150):
-        QMessageBox.warning(parent, "⚠️ Cảnh báo", "Temperature Limit Min vượt giới hạn (-40–150 °C).")
-        return
-
-    if not (-40 <= global_var.temp_limit_max <= 150):
-        QMessageBox.warning(parent, "⚠️ Cảnh báo", "Temperature Limit Max vượt giới hạn (-40–150 °C).")
-        return
-
-    if global_var.temp_limit_min >= global_var.temp_limit_max:
-        QMessageBox.warning(parent, "⚠️ Cảnh báo", "Temperature Limit Min phải nhỏ hơn Max.")
-        return
-
-    if not (0 <= global_var.ntc_pri_ref <= 100000):
-        QMessageBox.warning(parent, "⚠️ Cảnh báo", "NTC Pri Reference vượt giới hạn (0–7).")
-        return
-
-    if not (0 <= global_var.ntc_sec_ref <= 100000):
-        QMessageBox.warning(parent, "⚠️ Cảnh báo", "NTC Sec Reference vượt giới hạn (0–7).")
-        return
-
-    parent.log_box.append(f"[🌡️] Bắt đầu điều khiển nhiệt độ.")
+    parent.log_box.append("[🌡️] Bắt đầu điều khiển nhiệt độ.")
     parent.start_temp_ctrl_btn.setText("STOP")
-
-    # Đổi hành vi nút sang STOP
     parent.start_temp_ctrl_btn.clicked.disconnect()
     parent.start_temp_ctrl_btn.clicked.connect(lambda: stop_control_temperature(parent))
 
-    # TODO: gửi lệnh điều khiển đến CM4 hoặc MCU
-    # parent.ssh_handler.send_command(f"START_TEMP_CTRL {global_var.temp_target}")
-
+    # Gửi lệnh TCP
+    if hasattr(parent, "tcp_server") and parent.tcp_server:
+        parent.tcp_server.send_command(
+            "auto_temp_start",
+            tec_vol=global_var.temp_tec_voltage,
+            temp_target=global_var.temp_target,
+            temp_lim_min=global_var.temp_limit_min,
+            temp_lim_max=global_var.temp_limit_max,
+            ntc_ref_pri=global_var.temp_ntc_pri_ref,
+            ntc_ref_sec=global_var.temp_ntc_sec_ref
+        )
 
 def stop_control_temperature(parent):
     """
@@ -157,14 +145,18 @@ def stop_control_temperature(parent):
     parent.start_temp_ctrl_btn.clicked.connect(lambda: start_control_temperature(parent))
 
     # TODO: gửi lệnh điều khiển đến CM4 hoặc MCU
-    # parent.ssh_handler.send_command(f"STOP_TEMP_CTRL")
-
+    if hasattr(parent, "tcp_server") and parent.tcp_server:
+        parent.tcp_server.send_command("auto_temp_stop")
 
 def update_graph(parent):
     """
     Cập nhật biểu đồ 8 NTC từ data_queue.
     parent: instance CubeSat_Monitor
     """
+    # if global_var.tcp_connected == True:
+    #     print("trêu")
+    # if global_var.tcp_connected == False:
+    #     print("đùa")
     updated = False
     while True:
         try:

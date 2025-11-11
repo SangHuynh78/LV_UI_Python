@@ -1,5 +1,9 @@
 # globals.py
 
+# TCP
+tcp_connect_changed = False
+tcp_connected = False
+
 # Dữ liệu laser manual
 manual_laser_percent = 0
 
