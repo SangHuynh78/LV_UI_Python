@@ -7,6 +7,42 @@ from PyQt5.QtCore import Qt
 import time
 import global_var
 
+
+# =========================================================
+# 🧭 BẢNG ÁNH XẠ LỆNH → HÀM XỬ LÝ
+# =========================================================
+def handle_ntc_temp_update(params):
+    NTC0 = params.get("NTC0")
+    NTC1 = params.get("NTC1")
+    NTC2 = params.get("NTC2")
+    NTC3 = params.get("NTC3")
+    NTC4 = params.get("NTC4")
+    NTC5 = params.get("NTC5")
+    NTC6 = params.get("NTC6")
+    NTC7 = params.get("NTC7")
+
+    # Cập nhật giá trị nhiệt độ vào global_var
+    global_var.ntc_temp = {
+        "NTC0": NTC0,
+        "NTC1": NTC1,
+        "NTC2": NTC2,
+        "NTC3": NTC3,
+        "NTC4": NTC4,
+        "NTC5": NTC5,
+        "NTC6": NTC6,
+        "NTC7": NTC7
+    }
+
+    # print(f"ntc_temp_update: "
+    #       f"NTC0={NTC0}, NTC1={NTC1}, "
+    #       f"NTC4={NTC4}, NTC5={NTC5}, "
+    #       f"NTC2={NTC2}, NTC3={NTC3}, "
+    #       f"NTC6={NTC6}, NTC7={NTC7}")
+
+COMMAND_TABLE = {
+    "ntc_temp_update": handle_ntc_temp_update,
+}
+
 # =========================================================
 # 🧭 TCP SERVER CLASS (Threaded + Handshake mỗi 1s)
 # =========================================================
@@ -140,12 +176,25 @@ class TCPServer:
                     print(f"[📩 Nhận handshake từ client {addr}]: {line}")
                     continue
 
-                try:
-                    msg = json.loads(line)
-                    self.out_queue.put_nowait(msg)
-                    print(f"[📩 Nhận từ client {addr}]: {msg}")
-                except json.JSONDecodeError:
-                    print(f"[⚠️ Dữ liệu lỗi từ {addr}]: {line}")
+                else:
+                    try:
+                        msg = json.loads(line)
+                        if isinstance(msg, dict) and "cmd" in msg:
+                            cmd = msg["cmd"]
+                            params = msg.get("params", {})
+                            handler = COMMAND_TABLE.get(cmd)
+                            if handler:
+                                handler(params)
+                            else:
+                                print(f"[Lệnh không xác định]: {cmd}")
+                    except json.JSONDecodeError:
+                        print(f"[Dữ liệu không hợp lệ]: {line}")
+                # try:
+                #     msg = json.loads(line)
+                #     self.out_queue.put_nowait(msg)
+                #     print(f"[📩 Nhận từ client {addr}]: {msg}")
+                # except json.JSONDecodeError:
+                #     print(f"[⚠️ Dữ liệu lỗi từ {addr}]: {line}")
 
         except Exception as e:
             print(f"[⚠️ Client {addr} lỗi]: {e}")

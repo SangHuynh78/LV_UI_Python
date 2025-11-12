@@ -1,10 +1,12 @@
 # =========================================================
-# 📡 TCP Client — Print only + handshake + timeout-safe
+# 📡 TCP Client — Print only + handshake + periodic update
 # Huỳnh Thanh Sang, 2025
 # =========================================================
 import socket
 import time
 import json
+import threading
+import random
 
 HOST = "127.0.0.1"
 PORT = 5000
@@ -82,6 +84,28 @@ COMMAND_TABLE = {
     "laser_manual_turn_off_all": handle_laser_manual_turn_off_all,
 }
 
+
+# =========================================================
+# 📤 GỬI DỮ LIỆU NTC MỖI 1 GIÂY
+# =========================================================
+def ntc_update_thread(sock):
+    while True:
+        try:
+            # Giả lập dữ liệu NTC0...NTC7
+            params = {f"NTC{i}": round(20.0 + i * 10 + random.uniform(-2.0, 2.0), 2) for i in range(8)}
+            msg = {
+                "cmd": "ntc_temp_update",
+                "params": params
+            }
+            data = (json.dumps(msg) + "\n").encode('utf-8')
+            sock.sendall(data)
+            # print(f"[📤 Gửi]: {msg}")  # bật nếu muốn debug
+        except Exception as e:
+            print(f"[⚠️ Lỗi gửi NTC update]: {e}")
+            break
+        time.sleep(1)  # gửi mỗi 1 giây
+
+
 # =========================================================
 # 🚀 MAIN LOOP
 # =========================================================
@@ -89,6 +113,10 @@ def main():
     while True:
         sock = connect_to_server()
         buffer = ""
+
+        # Khởi chạy thread gửi NTC update
+        sender_thread = threading.Thread(target=ntc_update_thread, args=(sock,), daemon=True)
+        sender_thread.start()
 
         try:
             while True:
@@ -106,20 +134,20 @@ def main():
                             continue
 
                         if line == "server_hello_client":
-                            # ✅ Phản hồi handshake
                             print("[📩 Nhận handshake] server_hello_client — gửi client_hello_server")
                             try:
                                 sock.sendall(b"client_hello_server\n")
                             except Exception as e:
                                 print(f"[⚠️ Lỗi khi gửi handshake]: {e}")
+
                         elif line == "reject":
                             print("[⚠️ Server yêu cầu ngắt kết nối]")
                             raise ConnectionError("Server rejected")
+
                         else:
-                            # Chỉ in ra dữ liệu nhận được
                             print(f"[📩 Nhận từ server]: {line}")
                             try:
-                                msg = json.loads(data)
+                                msg = json.loads(line)
                                 if isinstance(msg, dict) and "cmd" in msg:
                                     cmd = msg["cmd"]
                                     params = msg.get("params", {})
@@ -129,10 +157,9 @@ def main():
                                     else:
                                         print(f"[Lệnh không xác định]: {cmd}")
                             except json.JSONDecodeError:
-                                print(f"[Dữ liệu không hợp lệ]: {data}")
+                                print(f"[Dữ liệu không hợp lệ]: {line}")
 
                 except socket.timeout:
-                    # 🔹 Timeout recv() bình thường, tiếp tục chờ dữ liệu
                     continue
 
         except (ConnectionError, OSError) as e:

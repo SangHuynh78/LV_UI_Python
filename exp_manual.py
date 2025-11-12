@@ -19,8 +19,9 @@ def create_manual_group_box(parent):
     manual_laser_vDAC_max.setAlignment(Qt.AlignCenter)
 
     # Label
-    manual_laser_percent_label = QLabel("Laser Percent")
+    manual_laser_percent_label = QLabel(f"Laser Percent: {global_var.manual_laser_percent}%")
     manual_laser_percent_label.setAlignment(Qt.AlignCenter)
+    parent.manual_laser_percent_label = manual_laser_percent_label  # Store reference for dynamic update
 
     # Nhóm nhập giá trị và đơn vị
     input_layout = QHBoxLayout()
@@ -37,7 +38,7 @@ def create_manual_group_box(parent):
     input_layout.addStretch()
 
     # Nút bấm
-    manual_laser_percent_btn = QPushButton("Set Intensity")
+    manual_laser_percent_btn = QPushButton("Change laser percent")
     manual_laser_percent_btn.setFixedSize(200, 50)
     manual_laser_percent_btn.setStyleSheet("""
         QPushButton {
@@ -75,7 +76,7 @@ def create_manual_group_box(parent):
     grid_group = QGroupBox("Laser Positions")
     grid = QGridLayout()
     # buttons = []
-    parent.manual_buttons_list = []
+    parent.exp_manual_buttons_list = []
 
     for i in range(6):
         for j in range(6):
@@ -83,6 +84,7 @@ def create_manual_group_box(parent):
             btn = QPushButton(str(idx))
             btn.setFixedSize(40, 40)
             btn.setCheckable(True)
+            btn.setEnabled(False)
             btn.setStyleSheet("""
                 QPushButton {
                     border-radius: 20px;
@@ -104,7 +106,7 @@ def create_manual_group_box(parent):
             # Chèn vào grid, đảo cột: 5-j để cột 0 bên trái → cột 5 bên phải
             grid.addWidget(btn, i, 5 - j)
             # buttons.append(btn)
-            parent.manual_buttons_list.append(btn)
+            parent.exp_manual_buttons_list.append(btn)
 
 
     grid_group.setLayout(grid)
@@ -120,7 +122,7 @@ def exp_manual_reset(parent):
     """
     Reset all manual laser position buttons to unchecked and update their style.
     """
-    for btn in getattr(parent, "manual_buttons_list", []):
+    for btn in getattr(parent, "exp_manual_buttons_list", []):
         btn.setChecked(False)
         btn.setStyleSheet("""
             border-radius: 20px;
@@ -146,8 +148,13 @@ def on_set_dac(manual_laser_percent_text_line, parent):
 
         if 0 <= val <= 100:
             global_var.manual_laser_percent = val
-            print(f"Setting DAC value to {val}%")
-            parent.log_box.append(f"[🎛️] DAC value set to {val}%")
+            print(f"Changed laser percent to {val}%")
+            parent.log_box.append(f"[🎛️] Changed laser percent to {val}%")
+            # Update the label dynamically
+            if hasattr(parent, "manual_laser_percent_label"):
+                parent.manual_laser_percent_label.setText(f"Laser Percent: {global_var.manual_laser_percent}%")
+            # Clear the input field
+            manual_laser_percent_text_line.clear()
             # Gửi lệnh TCP
             if hasattr(parent, "tcp_server") and parent.tcp_server:
                 parent.tcp_server.send_command(

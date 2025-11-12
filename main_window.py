@@ -41,9 +41,9 @@ class CubeSat_Monitor(QWidget):
             # sau này có thể thêm các trạng thái khác
         }
 
-        # --- Dữ liệu nhiệt độ ---
-        self.x_data = []
-        self.index = 0
+        # # --- Dữ liệu nhiệt độ ---
+        # self.x_data = []
+        # self.index = 0
         self.curves = []
 
         # --- Bố cục chính ---
@@ -76,7 +76,7 @@ class CubeSat_Monitor(QWidget):
         # --- Timer cập nhật biểu đồ ---
         self.graph_timer = QTimer()
         self.graph_timer.timeout.connect(lambda: update_graph(self))
-        self.graph_timer.start(100)  # cập nhật mỗi 100ms
+        # self.graph_timer.start(1000)  # cập nhật mỗi 1000ms
 
         # # Timer check queue
         # self.queue_timer = QTimer(self)
@@ -97,15 +97,27 @@ class CubeSat_Monitor(QWidget):
     def tcp_connect_block_app_check(self):
         if global_var.tcp_connect_changed == True:
             if global_var.tcp_connected == True: # UNLOCK
+                # graph
+                self.graph_timer.start(1000)  # cập nhật mỗi 100ms
+
+                # temp
                 self.start_temp_ctrl_btn.setEnabled(True)
                 self.start_temp_override_btn.setEnabled(True)
-
+                # laser_manual
+                for btn in getattr(self, "exp_manual_buttons_list", []):
+                    btn.setEnabled(True)
 
             else: # LOCK
+                # graph
+                self.graph_timer.stop()
+                # temp
                 self.start_temp_ctrl_btn.setEnabled(False)
                 self.start_temp_override_btn.setEnabled(False)
+                # laser_manual
+                for btn in getattr(self, "exp_manual_buttons_list", []):
+                    btn.setEnabled(False)
 
-                
+
             global_var.tcp_connect_changed = False
 
 
@@ -156,7 +168,7 @@ class CubeSat_Monitor(QWidget):
         exp_control_layout = QHBoxLayout()
         
         # --- Cột 2 hàng 2 Cột 2 Option 1: Manual box ---
-        # self.manual_box, self.manual_buttons_list = create_manual_group_box(self)
+        # self.manual_box, self.exp_manual_buttons_list = create_manual_group_box(self)
         self.manual_box = create_manual_group_box(self)
         exp_control_layout.addWidget(self.manual_box, 8)
 
