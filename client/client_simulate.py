@@ -31,13 +31,31 @@ def handle_auto_temp_start(params):
           f"(tec_voltage={tec_voltage}, temp_target={temp_target}, "
           f"temp_lim_min={temp_lim_min}, temp_lim_max={temp_lim_max}, "
           f"ntc_ref_pri={ntc_ref_pri}, ntc_ref_sec={ntc_ref_sec})")
+    print("aaa")
 
 def handle_auto_temp_stop(params):
     print(f"[⚙️] auto_temp_stop")
+    print("bbb")
+
+
+def handle_laser_manual_set_percent(params):
+    laser_percent = params.get(laser_percent)
+    print(f"laser_manual_set_percent percent={laser_percent}")
+
+def handle_laser_manual_turn_on(params):
+    laser_position = params.get("laser_pos")
+    print(f"laser_manual_turn_on pos={laser_position}")
+
+def handle_laser_manual_turn_off(params):
+    laser_position = params.get("laser_pos")
+    print(f"laser_manual_turn_off pos={laser_position}")
 
 COMMAND_TABLE = {
     "auto_temp_start": handle_auto_temp_start,
     "auto_temp_stop": handle_auto_temp_stop,
+    "laser_manual_set_percent": handle_laser_manual_set_percent,
+    "laser_manual_turn_on": handle_laser_manual_turn_on,
+    "laser_manual_turn_off": handle_laser_manual_turn_off,
 }
 
 

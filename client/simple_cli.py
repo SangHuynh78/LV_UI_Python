@@ -4,6 +4,7 @@
 # =========================================================
 import socket
 import time
+import json
 
 HOST = "127.0.0.1"
 PORT = 5000
@@ -25,6 +26,61 @@ def connect_to_server():
             print(f"[❌ Kết nối thất bại]: {e} — thử lại sau 2s...")
             time.sleep(2)
 
+
+# =========================================================
+# 🧭 BẢNG ÁNH XẠ LỆNH → HÀM XỬ LÝ
+# =========================================================
+def handle_auto_temp_start(params):
+    tec_voltage = params.get("tec_vol")
+    temp_target = params.get("temp_target")
+    temp_lim_min = params.get("temp_lim_min")
+    temp_lim_max = params.get("temp_lim_max")
+    ntc_ref_pri = params.get("ntc_ref_pri")
+    ntc_ref_sec = params.get("ntc_ref_sec")
+
+    print(f"[⚙️] auto_temp_start: "
+          f"(tec_voltage={tec_voltage}, temp_target={temp_target}, "
+          f"temp_lim_min={temp_lim_min}, temp_lim_max={temp_lim_max}, "
+          f"ntc_ref_pri={ntc_ref_pri}, ntc_ref_sec={ntc_ref_sec})")
+
+def handle_auto_temp_stop(params):
+    print(f"[⚙️] auto_temp_stop")
+
+def handle_temp_override_start(params):
+    tec_override_voltage = params.get("tec_override_vol")
+    tec_override_interval = params.get("tec_override_interval")
+    print(f"temp_override_start: "
+          f"tec_override_voltage={tec_override_voltage} "
+          f"tec_override_interval={tec_override_interval} ")
+    
+def handle_temp_override_stop(params):
+    print(f"temp_override_stop")
+    
+def handle_laser_manual_set_percent(params):
+    laser_percent = params.get("laser_percent")
+    print(f"laser_manual_set_percent: percent={laser_percent}")
+
+def handle_laser_manual_turn_on(params):
+    laser_position = params.get("laser_pos")
+    print(f"laser_manual_turn_on: pos={laser_position}")
+
+def handle_laser_manual_turn_off(params):
+    laser_position = params.get("laser_pos")
+    print(f"laser_manual_turn_off: pos={laser_position}")
+
+def handle_laser_manual_turn_off_all(params):
+    print("laser_manual_turn_off_all")
+
+COMMAND_TABLE = {
+    "auto_temp_start": handle_auto_temp_start,
+    "auto_temp_stop": handle_auto_temp_stop,
+    "temp_override_start": handle_temp_override_start,
+    "temp_override_stop": handle_temp_override_stop,
+    "laser_manual_set_percent": handle_laser_manual_set_percent,
+    "laser_manual_turn_on": handle_laser_manual_turn_on,
+    "laser_manual_turn_off": handle_laser_manual_turn_off,
+    "laser_manual_turn_off_all": handle_laser_manual_turn_off_all,
+}
 
 # =========================================================
 # 🚀 MAIN LOOP
@@ -62,6 +118,18 @@ def main():
                         else:
                             # Chỉ in ra dữ liệu nhận được
                             print(f"[📩 Nhận từ server]: {line}")
+                            try:
+                                msg = json.loads(data)
+                                if isinstance(msg, dict) and "cmd" in msg:
+                                    cmd = msg["cmd"]
+                                    params = msg.get("params", {})
+                                    handler = COMMAND_TABLE.get(cmd)
+                                    if handler:
+                                        handler(params)
+                                    else:
+                                        print(f"[Lệnh không xác định]: {cmd}")
+                            except json.JSONDecodeError:
+                                print(f"[Dữ liệu không hợp lệ]: {data}")
 
                 except socket.timeout:
                     # 🔹 Timeout recv() bình thường, tiếp tục chờ dữ liệu

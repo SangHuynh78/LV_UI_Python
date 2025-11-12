@@ -9,8 +9,8 @@ from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtCore import QTimer, Qt
 import pyqtgraph as pg
 
-from temp_ctrl import create_temperature_show_box, create_temperature_graph_box, create_temperature_control_box, update_graph
-from exp_manual import create_manual_group_box
+from temp_ctrl import create_temperature_show_box, create_temperature_graph_box, create_temperature_control_box, update_graph, create_temperature_override_box
+from exp_manual import create_manual_group_box, exp_manual_reset
 from exp_auto import create_auto_group_box
 
 import queue
@@ -27,28 +27,6 @@ class CubeSat_Monitor(QWidget):
                 self.showFullScreen()
             else:
                 self.showNormal()
-
-    # def process_queue(self):
-    #     try:
-    #         while not self.data_queue.empty():
-    #             msg = self.data_queue.get_nowait()
-    #             if "__meta__" in msg:
-    #                 meta = msg["__meta__"]
-
-    #                 # Chỉ xử lý client_hello 1 lần
-    #                 if meta == "client_hello" and not self.state.get("tcp_connected", False):
-    #                     self.log_box.append("[Client connected]")
-    #                     self.state["tcp_connected"] = True
-    #                     if hasattr(self, "start_temp_ctrl_btn"):
-    #                         self.start_temp_ctrl_btn.setEnabled(True)
-
-    #                 # Hiển thị log server
-    #                 elif not meta.startswith("client_hello"):
-    #                     if "Server started" in meta or "Client connected" in meta or "Client disconnected" in meta:
-    #                         self.log_box.append(meta.replace("[", "").replace("]", ""))
-
-    #     except queue.Empty:
-    #         pass
 
     def __init__(self):
         super().__init__()
@@ -120,9 +98,19 @@ class CubeSat_Monitor(QWidget):
         if global_var.tcp_connect_changed == True:
             if global_var.tcp_connected == True: # UNLOCK
                 self.start_temp_ctrl_btn.setEnabled(True)
+                self.start_temp_override_btn.setEnabled(True)
+
+
             else: # LOCK
                 self.start_temp_ctrl_btn.setEnabled(False)
+                self.start_temp_override_btn.setEnabled(False)
+
+                
             global_var.tcp_connect_changed = False
+
+
+
+
     # ----------------------------
     # CỘT 1: Nhiệt độ + Log
     # ----------------------------
@@ -134,6 +122,9 @@ class CubeSat_Monitor(QWidget):
         self.temp_ctrl_group = create_temperature_control_box(self)
 
         # Cột 1 Hàng 3
+        self.temp_override_group = create_temperature_override_box(self)
+
+        # Cột 1 Hàng 4
         log_group = QGroupBox("📝 Log")
         self.log_box = QTextEdit()
         self.log_box.setReadOnly(True)
@@ -141,9 +132,10 @@ class CubeSat_Monitor(QWidget):
         conn_ssh_layout.addWidget(self.log_box)
         log_group.setLayout(conn_ssh_layout)
 
-        layout.addWidget(self.temp_show_group, 1)
-        layout.addWidget(self.temp_ctrl_group, 1)
-        layout.addWidget(log_group, 2)
+        layout.addWidget(self.temp_show_group)
+        layout.addWidget(self.temp_ctrl_group)
+        layout.addWidget(self.temp_override_group)
+        layout.addWidget(log_group)
 
     # ----------------------------
     # CỘT 2: Biểu đồ + Điều khiển
@@ -164,7 +156,8 @@ class CubeSat_Monitor(QWidget):
         exp_control_layout = QHBoxLayout()
         
         # --- Cột 2 hàng 2 Cột 2 Option 1: Manual box ---
-        self.manual_box, self.manual_buttons_list = create_manual_group_box(self)
+        # self.manual_box, self.manual_buttons_list = create_manual_group_box(self)
+        self.manual_box = create_manual_group_box(self)
         exp_control_layout.addWidget(self.manual_box, 8)
 
         # --- Cột 2 hàng 2 Cột 2 Option 2: Auto box ---
@@ -260,3 +253,7 @@ class CubeSat_Monitor(QWidget):
         if hasattr(self, "manual_box") and hasattr(self, "auto_box"):
             self.manual_box.setVisible(manual_active)
             self.auto_box.setVisible(not manual_active)
+
+        # --- Reset manual nếu chuyển sang auto ---
+        if not manual_active:
+            exp_manual_reset(self)

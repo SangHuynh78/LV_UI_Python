@@ -11,7 +11,7 @@ def create_temperature_show_box(parent):
     """
     Tạo giao diện hiển thị nhiệt độ
     """
-    temp_show_group = QGroupBox("🌡️ Temperature monitor")
+    temp_show_group = QGroupBox("🌡️ Temperature Monitor")
     temp_show_layout = QHBoxLayout()
     col_a, col_b = QVBoxLayout(), QVBoxLayout()
     parent.temp_labels = []
@@ -78,7 +78,7 @@ def create_temperature_control_box(parent):
     ntc_pri_widget, parent.ntc_pri = create_lineedit_with_unit("", 0)
     ntc_sec_widget, parent.ntc_sec = create_lineedit_with_unit("", 1)
 
-    parent.start_temp_ctrl_btn = QPushButton("START")
+    parent.start_temp_ctrl_btn = QPushButton("START AUTO")
     parent.start_temp_ctrl_btn.setEnabled(False)
     parent.start_temp_ctrl_btn.clicked.connect(lambda: start_control_temperature(parent))
 
@@ -100,6 +100,41 @@ def create_temperature_control_box(parent):
     return temp_ctrl_group
 
 
+def create_temperature_override_box(parent):
+    temp_override_group = QGroupBox("🌡️ Temperature Override")
+    temp_override_layout = QGridLayout()
+
+    def create_lineedit_with_unit(unit, default_value=""):
+        container = QWidget()
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        lineedit = QLineEdit()
+        lineedit.setText(str(default_value))
+        label_unit = QLabel(unit)
+        label_unit.setFixedWidth(20)
+        lineedit.setFixedWidth(100)
+        layout.addWidget(lineedit)
+        layout.addWidget(label_unit)
+        container.setLayout(layout)
+        return container, lineedit
+
+    tec_override_voltage_widget, parent.tec_override_voltage = create_lineedit_with_unit("mV", 1500)
+    tec_override_interval_widget, parent.tec_override_interval = create_lineedit_with_unit("mS", 1000)
+
+    parent.start_temp_override_btn = QPushButton("START OVERRIDE")
+    parent.start_temp_override_btn.setEnabled(False)
+    parent.start_temp_override_btn.clicked.connect(lambda: start_override_temperature(parent))
+
+    temp_override_layout.addWidget(QLabel("TEC Override Voltage:"), 0, 0)
+    temp_override_layout.addWidget(tec_override_voltage_widget,     0, 1)
+    temp_override_layout.addWidget(QLabel("TEC Override Interval:"),1, 0)
+    temp_override_layout.addWidget(tec_override_interval_widget,    1, 1)
+
+    temp_override_layout.addWidget(parent.start_temp_override_btn,  2, 0, 1, 2)
+
+    temp_override_group.setLayout(temp_override_layout)
+    return temp_override_group
+
 def start_control_temperature(parent):
     try:
         global_var.temp_tec_voltage = int(parent.tec_voltage.text())
@@ -116,7 +151,9 @@ def start_control_temperature(parent):
     # (giữ nguyên như trước)
 
     parent.log_box.append("[🌡️] Bắt đầu điều khiển nhiệt độ.")
-    parent.start_temp_ctrl_btn.setText("STOP")
+
+    # Đổi hành vi nút thành STOP
+    parent.start_temp_ctrl_btn.setText("STOP AUTO")
     parent.start_temp_ctrl_btn.clicked.disconnect()
     parent.start_temp_ctrl_btn.clicked.connect(lambda: stop_control_temperature(parent))
 
@@ -138,15 +175,53 @@ def stop_control_temperature(parent):
     """
     global_var.temp_auto_state = 0
     parent.log_box.append("[🌡️] Dừng điều khiển nhiệt độ.")
-    parent.start_temp_ctrl_btn.setText("START")
-
+    
     # Đổi hành vi nút trở lại START
+    parent.start_temp_ctrl_btn.setText("START AUTO")
     parent.start_temp_ctrl_btn.clicked.disconnect()
     parent.start_temp_ctrl_btn.clicked.connect(lambda: start_control_temperature(parent))
 
     # TODO: gửi lệnh điều khiển đến CM4 hoặc MCU
     if hasattr(parent, "tcp_server") and parent.tcp_server:
         parent.tcp_server.send_command("auto_temp_stop")
+
+def start_override_temperature(parent):
+    """
+    Xử lý khi nhấn nút START override
+    """
+    try:
+        global_var.tec_override_voltage = int(parent.tec_override_voltage.text())
+        global_var.tec_override_interval = float(parent.tec_override_interval.text())
+    except ValueError:
+        QMessageBox.warning(parent, "⚠️ Cảnh báo", "Dữ liệu nhập không hợp lệ.")
+        return
+
+    # Đổi hành vi nút thành STOP
+    parent.start_temp_override_btn.setText("STOP OVERRIDE")
+    parent.start_temp_override_btn.clicked.disconnect()
+    parent.start_temp_override_btn.clicked.connect(lambda: stop_override_temperature(parent))
+
+    # Gửi xuống CM4
+    if hasattr(parent, "tcp_server") and parent.tcp_server:
+        parent.tcp_server.send_command(
+            "temp_override_start",
+            tec_override_vol=global_var.tec_override_voltage,
+            tec_override_interval=global_var.tec_override_interval
+        )
+
+def stop_override_temperature(parent):
+    """
+    Xử lý khi nhấn nút STOP override
+    """
+
+    # Đổi hành vi nút trở lại START
+    parent.start_temp_override_btn.setText("START OVERRIDE")
+    parent.start_temp_override_btn.clicked.disconnect()
+    parent.start_temp_override_btn.clicked.connect(lambda: start_override_temperature(parent))
+
+    # Gửi xuống CM4
+    if hasattr(parent, "tcp_server") and parent.tcp_server:
+        parent.tcp_server.send_command("temp_override_stop")
 
 def update_graph(parent):
     """

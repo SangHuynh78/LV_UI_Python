@@ -21,6 +21,10 @@ temp_ntc_pri_ref = 0
 temp_ntc_sec_ref = 0
 temp_auto_state = 0
 
+# Temperature override
+tec_override_voltage = 0
+tec_override_interval = 0
+
 # Experiment variable
 exp_sampling_rate = 0
 exp_pos = 0

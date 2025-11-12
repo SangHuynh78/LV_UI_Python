@@ -25,9 +25,10 @@ def create_manual_group_box(parent):
     # Nhóm nhập giá trị và đơn vị
     input_layout = QHBoxLayout()
     manual_laser_percent_text_line = QLineEdit()
-    manual_laser_percent_text_line.setFixedWidth(140)
+    manual_laser_percent_text_line.setFixedWidth(160)
     manual_laser_percent_text_line.setFixedHeight(35)
-    manual_laser_percent_text_line.setPlaceholderText("Type laser intensity (0-100)")
+    manual_laser_percent_text_line.setPlaceholderText("Type laser percent")
+    manual_laser_percent_text_line.setAlignment(Qt.AlignCenter)
     manual_laser_percent_unit = QLabel("%")
     manual_laser_percent_unit.setAlignment(Qt.AlignVCenter)
     input_layout.addStretch()
@@ -73,7 +74,8 @@ def create_manual_group_box(parent):
     # --- Grid các nút vị trí laser ---
     grid_group = QGroupBox("Laser Positions")
     grid = QGridLayout()
-    buttons = []
+    # buttons = []
+    parent.manual_buttons_list = []
 
     for i in range(6):
         for j in range(6):
@@ -96,13 +98,13 @@ def create_manual_group_box(parent):
                 }
             """)
             # Kết nối đến hàm manual_exp_with_pos
-            # btn.clicked.connect(lambda _, pos=idx, b=btn: manual_exp_with_pos(parent, pos, global_var.manual_laser_percent, b))
-            btn.clicked.connect(lambda _: abc(parent, 1, 2, 3))
+            btn.clicked.connect(lambda _, pos=idx, b=btn: manual_exp_with_pos(parent, pos, global_var.manual_laser_percent, b))
+            # btn.clicked.connect(lambda _: abc(parent, 1, 2, 3))
             
-
             # Chèn vào grid, đảo cột: 5-j để cột 0 bên trái → cột 5 bên phải
             grid.addWidget(btn, i, 5 - j)
-            buttons.append(btn)
+            # buttons.append(btn)
+            parent.manual_buttons_list.append(btn)
 
 
     grid_group.setLayout(grid)
@@ -111,8 +113,29 @@ def create_manual_group_box(parent):
     layout_laser.addWidget(grid_group, 8)
 
     manual_box.setLayout(layout_laser)
-    return manual_box, buttons
+    # return manual_box, buttons
+    return manual_box
 
+def exp_manual_reset(parent):
+    """
+    Reset all manual laser position buttons to unchecked and update their style.
+    """
+    for btn in getattr(parent, "manual_buttons_list", []):
+        btn.setChecked(False)
+        btn.setStyleSheet("""
+            border-radius: 20px;
+            border: 2px solid black;
+            font-weight: bold;
+            background-color: white;
+            color: black;
+        """)
+        btn.setChecked(False)
+    
+    # Gửi lệnh TCP
+    if hasattr(parent, "tcp_server") and parent.tcp_server:
+        parent.tcp_server.send_command(
+            "laser_manual_turn_off_all"
+        )
 
 def on_set_dac(manual_laser_percent_text_line, parent):
     """
@@ -125,6 +148,12 @@ def on_set_dac(manual_laser_percent_text_line, parent):
             global_var.manual_laser_percent = val
             print(f"Setting DAC value to {val}%")
             parent.log_box.append(f"[🎛️] DAC value set to {val}%")
+            # Gửi lệnh TCP
+            if hasattr(parent, "tcp_server") and parent.tcp_server:
+                parent.tcp_server.send_command(
+                    "laser_manual_set_percent",
+                    laser_percent = global_var.manual_laser_percent
+                )
         else:
             QMessageBox.warning(None, "Invalid Input", "Please enter a value between 0 and 100.")
     except ValueError:
@@ -142,13 +171,26 @@ def manual_exp_with_pos(parent, pos, percent, btn):
             QMessageBox.warning(None, "Invalid Input", "DAC value is 0%. Please set a valid value.")
             btn.setChecked(False)
             return
-        parent.log_box.append(f"[🧭] Bật thí nghiệm tại vị trí {pos}, DAC={percent}%")
+        else:
+            parent.log_box.append(f"[🧭] Bật thí nghiệm tại vị trí {pos}, DAC={percent}%")
+            # Gửi lệnh TCP
+            if hasattr(parent, "tcp_server") and parent.tcp_server:
+                parent.tcp_server.send_command(
+                    "laser_manual_turn_on",
+                    laser_pos = pos
+                )
     else:
         parent.log_box.append(f"[🧭] Tắt thí nghiệm tại vị trí {pos}")
+        # Gửi lệnh TCP
+        if hasattr(parent, "tcp_server") and parent.tcp_server:
+            parent.tcp_server.send_command(
+                "laser_manual_turn_off",
+                laser_pos = pos
+            )
 
     # Cập nhật lại màu nút
     btn.setStyleSheet(f"""
-        border-radius: 25px;
+        border-radius: 20px;
         border: 2px solid black;
         font-weight: bold;
         background-color: {'#45a049' if state else 'white'};

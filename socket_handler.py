@@ -65,7 +65,7 @@ class TCPServer:
             try:
                 self._server_sock.settimeout(1.0)
                 client_sock, addr = self._server_sock.accept()
-                print(f"[+] Client connected: {addr}")
+                print(f"[✅ Client connected: {addr}]")
                 self.clients.append((client_sock, addr))
                 self.handshake_done[client_sock] = False
 
@@ -127,7 +127,7 @@ class TCPServer:
     # 📝 Main client loop (nhận dữ liệu JSON, chỉ in ra)
     # -----------------------------------------------------
     def _handle_client(self, client_sock, addr):
-        print(f"[i]Client {addr} ready to send/receive]")
+        print(f"[✅ Client {addr} ready to send/receive]")
         try:
             client_sock.settimeout(None)
             f = client_sock.makefile("r")
