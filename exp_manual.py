@@ -38,9 +38,9 @@ def create_manual_group_box(parent):
     input_layout.addStretch()
 
     # Nút bấm
-    manual_laser_percent_btn = QPushButton("Change laser percent")
-    manual_laser_percent_btn.setFixedSize(200, 50)
-    manual_laser_percent_btn.setStyleSheet("""
+    parent.manual_laser_percent_btn = QPushButton("Change laser percent")
+    parent.manual_laser_percent_btn.setFixedSize(200, 50)
+    parent.manual_laser_percent_btn.setStyleSheet("""
         QPushButton {
             background-color: #64B5F6;  /* Xanh nhạt */
             color: white;
@@ -56,7 +56,8 @@ def create_manual_group_box(parent):
             border: 2px solid #1565C0;
         }
     """)
-    manual_laser_percent_btn.clicked.connect(lambda: on_set_dac(manual_laser_percent_text_line, parent))
+    parent.manual_laser_percent_btn.setEnabled(False)
+    parent.manual_laser_percent_btn.clicked.connect(lambda: on_set_dac(manual_laser_percent_text_line, parent))
 
     # Ghép bố cục tổng
     manual_laser_percent_layout.addSpacing(5)
@@ -66,7 +67,7 @@ def create_manual_group_box(parent):
     manual_laser_percent_layout.addSpacing(15)
     manual_laser_percent_layout.addLayout(input_layout)
     manual_laser_percent_layout.addSpacing(20)
-    manual_laser_percent_layout.addWidget(manual_laser_percent_btn, alignment=Qt.AlignCenter)
+    manual_laser_percent_layout.addWidget(parent.manual_laser_percent_btn, alignment=Qt.AlignCenter)
     manual_laser_percent_layout.addStretch()
 
     manual_laser_percent_group.setLayout(manual_laser_percent_layout)

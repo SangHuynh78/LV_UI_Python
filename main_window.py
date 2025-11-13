@@ -96,14 +96,15 @@ class CubeSat_Monitor(QWidget):
 
     def tcp_connect_block_app_check(self):
         if global_var.tcp_connect_changed == True:
+            global_var.tcp_connect_changed = False
             if global_var.tcp_connected == True: # UNLOCK
                 # graph
                 self.graph_timer.start(1000)  # cập nhật mỗi 100ms
-
                 # temp
                 self.start_temp_ctrl_btn.setEnabled(True)
                 self.start_temp_override_btn.setEnabled(True)
                 # laser_manual
+                self.manual_laser_percent_btn.setEnabled(True)
                 for btn in getattr(self, "exp_manual_buttons_list", []):
                     btn.setEnabled(True)
 
@@ -114,13 +115,9 @@ class CubeSat_Monitor(QWidget):
                 self.start_temp_ctrl_btn.setEnabled(False)
                 self.start_temp_override_btn.setEnabled(False)
                 # laser_manual
+                self.manual_laser_percent_btn.setEnabled(False)
                 for btn in getattr(self, "exp_manual_buttons_list", []):
                     btn.setEnabled(False)
-
-
-            global_var.tcp_connect_changed = False
-
-
 
 
     # ----------------------------

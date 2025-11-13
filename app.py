@@ -22,6 +22,6 @@ from PyQt5.QtCore import Qt
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = CubeSat_Monitor()
-    window.show()
-    # window.showMaximized()
+    # window.show()
+    window.showMaximized()
     sys.exit(app.exec_())
