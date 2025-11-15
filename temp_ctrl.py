@@ -168,7 +168,7 @@ def start_control_temperature(parent):
     # Gửi lệnh TCP
     if hasattr(parent, "tcp_server") and parent.tcp_server:
         parent.tcp_server.send_command(
-            "auto_temp_start",
+            "temp_auto_start",
             tec_vol=global_var.temp_tec_voltage,
             temp_target=global_var.temp_target,
             temp_lim_min=global_var.temp_limit_min,
@@ -199,7 +199,7 @@ def stop_control_temperature(parent):
 
     # TODO: gửi lệnh điều khiển đến CM4 hoặc MCU
     if hasattr(parent, "tcp_server") and parent.tcp_server:
-        parent.tcp_server.send_command("auto_temp_stop")
+        parent.tcp_server.send_command("temp_auto_stop")
 
 def start_override_temperature(parent):
     """

@@ -14,42 +14,62 @@ def create_auto_group_box(parent):
     exp_auto_profile_layout = QGridLayout()
 
     # --- Các ô nhập liệu ---
-    parent.exp_sample_rate = QLineEdit()
-    parent.exp_position = QLineEdit()
-    parent.exp_laser_percent = QLineEdit()
-    parent.exp_pre_time = QLineEdit()
-    parent.exp_experiment_time = QLineEdit()
-    parent.exp_post_time = QLineEdit()
+    parent.exp_sample_rate = QLineEdit("1000000")
+    parent.exp_sample_rate.setMaximumWidth(120)
+    parent.exp_first_position = QLineEdit("1")
+    parent.exp_first_position.setMaximumWidth(60)
+    parent.exp_end_position = QLineEdit("36")
+    parent.exp_end_position.setMaximumWidth(60)
+    parent.exp_laser_percent = QLineEdit("50")
+    parent.exp_laser_percent.setMaximumWidth(120)
+    parent.exp_pre_time = QLineEdit("100")
+    parent.exp_pre_time.setMaximumWidth(120)
+    parent.exp_experiment_time = QLineEdit("3800")
+    parent.exp_experiment_time.setMaximumWidth(120)
+    parent.exp_post_time = QLineEdit("100")
+    parent.exp_post_time.setMaximumWidth(120)
 
     # Placeholder giúp gợi ý nội dung nhập
-    parent.exp_sample_rate.setPlaceholderText("1000 sps")
-    parent.exp_position.setPlaceholderText("1-36")
-    parent.exp_laser_percent.setPlaceholderText("0-100%")
-    parent.exp_pre_time.setPlaceholderText("1000 ms")
-    parent.exp_experiment_time.setPlaceholderText("2000 ms")
-    parent.exp_post_time.setPlaceholderText("1000 ms")
+    parent.exp_sample_rate.setPlaceholderText("1000000")
+    parent.exp_first_position.setPlaceholderText("1")
+    parent.exp_end_position.setPlaceholderText("36")
+    parent.exp_laser_percent.setPlaceholderText("0-100")
+    parent.exp_pre_time.setPlaceholderText("1000")
+    parent.exp_experiment_time.setPlaceholderText("2000")
+    parent.exp_post_time.setPlaceholderText("1000")
 
     # --- Nút START ---
-    start_btn = QPushButton("START")
+    start_btn = QPushButton("START EXPERIMENT")
     # Gắn sự kiện cho nút START
-    start_btn.clicked.connect(start_experiment)
+    start_btn.clicked.connect(lambda: start_experiment(parent))
 
     # --- Bố trí exp_auto_profile_layout ---
     exp_auto_profile_layout.addWidget(QLabel("Sample Rate:"),          0, 0)
     exp_auto_profile_layout.addWidget(parent.exp_sample_rate,          0, 1)
+    exp_auto_profile_layout.addWidget(QLabel("bsp"),                   0, 2)
 
     exp_auto_profile_layout.addWidget(QLabel("Position:"),              1, 0)
-    exp_auto_profile_layout.addWidget(parent.exp_position,              1, 1)
+    exp_auto_profile_layout.addWidget(parent.exp_first_position,        1, 1)
+    exp_auto_profile_layout.addWidget(QLabel("to"),                     1, 2)
+    exp_auto_profile_layout.addWidget(parent.exp_end_position,          1, 3)
 
     exp_auto_profile_layout.addWidget(QLabel("Laser Percent:"),         2, 0)
     exp_auto_profile_layout.addWidget(parent.exp_laser_percent,         2, 1)
+    exp_auto_profile_layout.addWidget(QLabel("%"),                      2, 2)
+
 
     exp_auto_profile_layout.addWidget(QLabel("Pre Time:"),             3, 0)
     exp_auto_profile_layout.addWidget(parent.exp_pre_time,              3, 1)
+    exp_auto_profile_layout.addWidget(QLabel("mS"),                     3, 2)
+
     exp_auto_profile_layout.addWidget(QLabel("Experiment Time:"),      4, 0)
     exp_auto_profile_layout.addWidget(parent.exp_experiment_time,      4, 1)
+    exp_auto_profile_layout.addWidget(QLabel("mS"),                     4, 2)
+
     exp_auto_profile_layout.addWidget(QLabel("Post Time:"),            5, 0)
     exp_auto_profile_layout.addWidget(parent.exp_post_time,             5, 1)
+    exp_auto_profile_layout.addWidget(QLabel("mS"),                     5, 2)
+
     exp_auto_profile_layout.addWidget(start_btn,                        7, 0, 1, 2)
 
     exp_auto_profile_group.setLayout(exp_auto_profile_layout)

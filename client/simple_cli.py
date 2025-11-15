@@ -7,10 +7,53 @@ import time
 import json
 import threading
 import random
+from serial_driver import SerialAPI
 
+# =========================================================
+# 🧩 GLOBAL DEFINES
+# =========================================================
 HOST = "127.0.0.1"
 PORT = 5000
 
+# =========================================================
+# 🧩 GLOBAL VARIABLE
+# =========================================================
+ntc_temp = [0] * 8
+
+# =========================================================
+# 🧩 HANDLERS
+# =========================================================
+
+def handle_ntc_temp(params):
+    """
+    params = list các giá trị đọc được từ NTC
+    ví dụ: [20,20,20,20,20,20,20,21]
+    """
+    global ntc_temp
+    values = list(map(float, params))
+    ntc_temp = values
+
+UART_DISPATCH_TABLE = {
+    "ntc_temp": handle_ntc_temp,
+}
+
+# =========================================================
+# 📥 UART RX callback
+# =========================================================
+def on_uart_rx(line):
+    print(f"[📥 UART RX]: {line}")
+
+    tokens = line.strip().split()
+    if len(tokens) == 0:
+        return
+
+    cmd = tokens[0]
+    params = tokens[1:]
+
+    handler = UART_DISPATCH_TABLE.get(cmd)
+
+    if handler:
+        handler(params)
 
 # =========================================================
 # ⚙️ KẾT NỐI TỚI SERVER (tự thử lại mỗi 2s)
@@ -32,7 +75,7 @@ def connect_to_server():
 # =========================================================
 # 🧭 BẢNG ÁNH XẠ LỆNH → HÀM XỬ LÝ
 # =========================================================
-def handle_auto_temp_start(params):
+def handle_temp_auto_start(params):
     tec_voltage = params.get("tec_vol")
     temp_target = params.get("temp_target")
     temp_lim_min = params.get("temp_lim_min")
@@ -40,42 +83,59 @@ def handle_auto_temp_start(params):
     ntc_ref_pri = params.get("ntc_ref_pri")
     ntc_ref_sec = params.get("ntc_ref_sec")
 
-    print(f"[⚙️] auto_temp_start: "
+    print(f"temp_auto_start: "
           f"(tec_voltage={tec_voltage}, temp_target={temp_target}, "
           f"temp_lim_min={temp_lim_min}, temp_lim_max={temp_lim_max}, "
           f"ntc_ref_pri={ntc_ref_pri}, ntc_ref_sec={ntc_ref_sec})")
+    
+    # -------------------------------
+    # Gửi xuống UART dạng chuỗi kí tự
+    # -------------------------------
+    cmd = f"temp_auto_start {tec_voltage} {temp_target} {temp_lim_min} {temp_lim_max} {ntc_ref_pri} {ntc_ref_sec}\n"
+    uart.send(cmd)
 
-def handle_auto_temp_stop(params):
-    print(f"[⚙️] auto_temp_stop")
+def handle_temp_auto_stop(params):
+    print("temp_auto_stop")
+    cmd = "temp_auto_stop\n"
+    uart.send(cmd)
 
 def handle_temp_override_start(params):
     tec_override_voltage = params.get("tec_override_vol")
     tec_override_interval = params.get("tec_override_interval")
     print(f"temp_override_start: "
-          f"tec_override_voltage={tec_override_voltage} "
-          f"tec_override_interval={tec_override_interval} ")
+          f"{tec_override_voltage} {tec_override_interval}")
+    cmd = f"temp_override_start {tec_override_voltage} {tec_override_interval}\n"
+    uart.send(cmd)
     
 def handle_temp_override_stop(params):
-    print(f"temp_override_stop")
-    
+    print("temp_override_stop")
+    uart.send("temp_override_stop\n")
+
 def handle_laser_manual_set_percent(params):
     laser_percent = params.get("laser_percent")
-    print(f"laser_manual_set_percent: percent={laser_percent}")
+    print(f"laser_manual_set_percent: {laser_percent}")
+    cmd = f"laser_manual_set_percent {laser_percent}\n"
+    uart.send(cmd)
 
 def handle_laser_manual_turn_on(params):
     laser_position = params.get("laser_pos")
-    print(f"laser_manual_turn_on: pos={laser_position}")
+    print(f"laser_manual_turn_on: {laser_position}")
+    cmd = f"laser_manual_turn_on {laser_position}\n"
+    uart.send(cmd)
 
 def handle_laser_manual_turn_off(params):
     laser_position = params.get("laser_pos")
-    print(f"laser_manual_turn_off: pos={laser_position}")
+    print(f"laser_manual_turn_off: {laser_position}")
+    cmd = f"laser_manual_turn_off {laser_position}\n"
+    uart.send(cmd)
 
 def handle_laser_manual_turn_off_all(params):
     print("laser_manual_turn_off_all")
+    uart.send("laser_manual_turn_off_all\n")
 
 COMMAND_TABLE = {
-    "auto_temp_start": handle_auto_temp_start,
-    "auto_temp_stop": handle_auto_temp_stop,
+    "temp_auto_start": handle_temp_auto_start,
+    "temp_auto_stop": handle_temp_auto_stop,
     "temp_override_start": handle_temp_override_start,
     "temp_override_stop": handle_temp_override_stop,
     "laser_manual_set_percent": handle_laser_manual_set_percent,
@@ -92,7 +152,7 @@ def ntc_update_thread(sock):
     while True:
         try:
             # Giả lập dữ liệu NTC0...NTC7
-            params = {f"NTC{i}": round(20.0 + i * 10 + random.uniform(-2.0, 2.0), 2) for i in range(8)}
+            params = {f"NTC{i}": ntc_temp[i] for i in range(8)}
             msg = {
                 "cmd": "ntc_temp_update",
                 "params": params
@@ -179,4 +239,9 @@ def main():
 # 🚀 CHẠY CHƯƠNG TRÌNH
 # =========================================================
 if __name__ == "__main__":
+
+    uart = SerialAPI("/dev/ttyAMA3", 115200)
+    uart.set_rx_callback(on_uart_rx)
+    uart.open()
+
     main()
