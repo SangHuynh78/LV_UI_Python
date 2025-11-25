@@ -26,9 +26,13 @@ tec_override_voltage = 0
 tec_override_interval = 0
 
 # Experiment variable
-exp_sampling_rate = 0
-exp_pos = 0
+exp_sample_rate = 0
+exp_first_position = 0
+exp_end_position = 0
 exp_laser_percent = 0
 exp_pre_time = 0
 exp_experiment_time = 0
 exp_post_time = 0
+
+# parrent
+exp_auto_parent = 0

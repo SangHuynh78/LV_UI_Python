@@ -107,6 +107,9 @@ class CubeSat_Monitor(QWidget):
                 self.manual_laser_percent_btn.setEnabled(True)
                 for btn in getattr(self, "exp_manual_buttons_list", []):
                     btn.setEnabled(True)
+                
+                # laser_auto
+                self.start_btn.setEnabled(True)
 
             else: # LOCK
                 # graph
@@ -118,6 +121,8 @@ class CubeSat_Monitor(QWidget):
                 self.manual_laser_percent_btn.setEnabled(False)
                 for btn in getattr(self, "exp_manual_buttons_list", []):
                     btn.setEnabled(False)
+                # laser_auto
+                self.start_btn.setEnabled(False)
 
 
     # ----------------------------

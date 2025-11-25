@@ -1,4 +1,4 @@
-# serial_api.py
+# serial_driver.py
 import threading
 import time
 import serial

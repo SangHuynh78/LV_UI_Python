@@ -6,18 +6,75 @@ import socket
 import time
 import json
 import threading
-import random
+from pathlib import Path
+from datetime import datetime
 from serial_driver import SerialAPI
+from spi_driver import SPIAPI
+
+BASE_DATA_DIR = Path.home() / "SangHuynh_Dev/Data"
+BASE_DATA_DIR.mkdir(parents=True, exist_ok=True)  # Tạo thư mục Data nếu chưa tồn tại
+
+CONFIG_DIR = Path.home() / ".app_src/02_ConfigSystem"
+
+# Global variable to track current timepoint folder
+current_timepoint_folder = None
+
+def get_daily_folder():
+    today = datetime.now().strftime("%Y%m%d")
+    daily_folder = BASE_DATA_DIR / today
+    daily_folder.mkdir(parents=True, exist_ok=True)
+    return daily_folder
+
+def get_timepoint_folder():
+    """Get current timepoint folder, create temp folder if none exists"""
+    global current_timepoint_folder
+    if current_timepoint_folder is None:
+        # Create default temp folder if no timepoint has been set
+        daily_folder = get_daily_folder()
+        temp_folder = daily_folder / "temp"
+        temp_folder.mkdir(parents=True, exist_ok=True)
+        return temp_folder
+    return current_timepoint_folder
+
+# def get_timepoint_folder():
+#     """Get current timepoint folder, create folder based on timestamp if none exists"""
+#     global current_timepoint_folder
+#     if current_timepoint_folder is None:
+#         daily_folder = get_daily_folder()  # folder ngày hiện tại
+#         # Tạo folder timestamp
+#         timestamp = datetime.now().strftime("%H%M%S")
+#         current_timepoint_folder = daily_folder / timestamp
+#         current_timepoint_folder.mkdir(parents=True, exist_ok=True)
+#     return current_timepoint_folder
+
+def save_data_file(filename, content, append=False, use_timepoint=True):
+    """Save data file to appropriate location"""
+    if use_timepoint:
+        # Save to timepoint folder for experiment data
+        folder = get_timepoint_folder()
+    else:
+        # Save to daily folder for logs
+        folder = get_daily_folder()
+    
+    filepath = folder / filename
+    mode = "ab" if append else "wb"
+    with open(filepath, mode) as f:
+        f.write(content)
+    # if append == False:
+    #     logger.info(f"[+] Saved to {filepath}")
+    print(f"[+] Saved to {filepath} ({'append' if append else 'write'})")
 
 # =========================================================
 # 🧩 GLOBAL DEFINES
 # =========================================================
-HOST = "127.0.0.1"
+# HOST = "127.0.0.1"
+HOST = "192.168.137.1"
 PORT = 5000
 
 # =========================================================
 # 🧩 GLOBAL VARIABLE
 # =========================================================
+sock = None
 ntc_temp = [0] * 8
 
 # =========================================================
@@ -25,16 +82,184 @@ ntc_temp = [0] * 8
 # =========================================================
 
 def handle_ntc_temp(params):
-    """
-    params = list các giá trị đọc được từ NTC
-    ví dụ: [20,20,20,20,20,20,20,21]
-    """
     global ntc_temp
     values = list(map(float, params))
     ntc_temp = values
+    print(f"[NTC Temps]: {ntc_temp}")
+
+# def handle_exp_started(params):
+#     """
+#     params: list/tuple chứa giá trị pos ở index 0
+#     """
+#     global sock
+#     if sock is None:
+#         print("[!] sock chưa sẵn sàng")
+#         return
+
+#     # Ép kiểu pos về int luôn để an toàn
+#     pos = int(params[0])
+
+#     msg = {
+#         "cmd": "exp_started",
+#         "params": {"pos": pos}
+#     }
+
+#     try:
+#         sock.sendall((json.dumps(msg) + "\n").encode('utf-8'))
+#         print(f"[TCP] Sent exp_started: pos={pos}")
+#     except Exception as e:
+#         print(f"[!] Lỗi gửi TCP: {e}")
+
+# def handle_exp_ended(params):
+#     """
+#     params: list/tuple chứa giá trị pos ở index 0
+#     """
+#     global sock
+#     if sock is None:
+#         print("[!] sock chưa sẵn sàng")
+#         return
+
+#     msg = {
+#         "cmd": "exp_ended",
+#     }
+
+#     try:
+#         sock.sendall((json.dumps(msg) + "\n").encode('utf-8'))
+#         print(f"[TCP] Sent exp_ended")
+#     except Exception as e:
+#         print(f"[!] Lỗi gửi TCP: {e}")
+
+def handle_data_chunk(params):
+    try:
+        print("[CMD] CHUNK")
+
+        # Convert all params to integers
+        params = [int(x) for x in params]
+
+        if len(params) != 13:
+            print("[!] Invalid CHUNK payload")
+            return
+        
+        # Parse fields
+        chunk_id = (params[0] << 8) | params[1]
+
+        crc_received = (
+            (params[2] << 24) |
+            (params[3] << 16) |
+            (params[4] << 8)  |
+            params[5]
+        )
+
+        year   = params[6]
+        month  = params[7]
+        day    = params[8]
+        hour   = params[9]
+        minute = params[10]
+        second = params[11]
+        index  = params[12]
+
+        # Receive SPI data
+        data = spi.read_spi_block()
+        # crc = calculate_crc32(data)
+
+        print(f"Chunk ID: {chunk_id}")
+        print(f"Timestamp: 20{year:02d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}")
+
+        # Save data chunk into file
+        filename = f"dls_i{index:02d}_20{year:02d}{month:02d}{day:02d}_{hour:02d}{minute:02d}{second:02d}.bin"
+        save_data_file(filename, data, append=True, use_timepoint=True)
+
+        print(f"[v] Finish chunk: {chunk_id}")
+
+    except Exception as e:
+        print(f"[!] Exception in CHUNK handler: {e}")
+
+    return
+
+def handle_current_chunk(params):
+    try:
+        print("[CMD] CURRENT")
+
+        # Chuyển tất cả param sang int
+        params = [int(x) for x in params]
+
+        if len(params) != 11:
+            print("[!] Invalid CURRENT payload")
+            return
+
+        # Parse CRC và timestamp
+        crc_received = (
+            (params[0] << 24) |
+            (params[1] << 16) |
+            (params[2] << 8)  |
+            params[3]
+        )
+
+        year   = params[4]
+        month  = params[5]
+        day    = params[6]
+        hour   = params[7]
+        minute = params[8]
+        second = params[9]
+        index  = params[10]
+
+        # Đọc dữ liệu SPI
+        current_data = spi.read_spi_block()
+        # crc_calc = calculate_crc32(data)
+
+        # print(f"Received CRC: {crc_received:08X}, Calculated CRC: {crc_calc:08X}")
+        print(f"Timestamp: 20{year:02d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}")
+
+        # Lưu dữ liệu vào file
+        filename = f"current_i{index:02d}_20{year:02d}{month:02d}{day:02d}_{hour:02d}{minute:02d}{second:02d}.bin"
+        save_data_file(filename, current_data, use_timepoint=True)
+
+        print("[.] Current Data got!")
+
+    except Exception as e:
+        print(f"[!] Exception in CURRENT handler: {e}")
+
+def handle_log_chunk(params):
+    try:
+        print("[CMD] LOG")
+
+        # Chuyển tất cả param sang int
+        params = [int(x) for x in params]
+
+        if len(params) != 7:
+            print("[!] Invalid LOG payload")
+            return
+
+        # Parse fields
+        log_type = params[0]  # 0xFF for obc, else exp
+        year   = params[1]
+        month  = params[2]
+        day    = params[3]
+        hour   = params[4]
+        minute = params[5]
+        second = params[6]
+
+        # Đặt tên file
+        label = "obc_log" if log_type == 0xFF else "exp_log"
+        filename = f"{label}_20{year:02d}{month:02d}{day:02d}_{hour:02d}{minute:02d}{second:02d}.bin"
+
+        # Đọc dữ liệu SPI và lưu file
+        data = spi.read_spi_block()
+        save_data_file(filename, data, use_timepoint=False)
+
+        print(f"[.] -> Got: {label}!")
+
+    except Exception as e:
+        print(f"[!] Exception in LOG handler: {e}")
+
+
 
 UART_DISPATCH_TABLE = {
     "ntc_temp": handle_ntc_temp,
+    # "exp_started": handle_exp_started,
+    "data_chunk": handle_data_chunk,
+    "current_chunk": handle_current_chunk,
+    "log_chunk": handle_log_chunk,
 }
 
 # =========================================================
@@ -133,6 +358,27 @@ def handle_laser_manual_turn_off_all(params):
     print("laser_manual_turn_off_all")
     uart.send("laser_manual_turn_off_all\n")
 
+def handle_exp_start(params):
+    exp_sample_rate = params.get("exp_sample_rate")
+    exp_first_position = params.get("exp_first_position")
+    exp_end_position = params.get("exp_end_position")
+    exp_laser_percent = params.get("exp_laser_percent")
+    exp_pre_time = params.get("exp_pre_time")
+    exp_experiment_time = params.get("exp_experiment_time")
+    exp_post_time = params.get("exp_post_time")
+
+    print(f"exp_start: "
+          f"(exp_sample_rate={exp_sample_rate}, "
+          f"exp_first_position={exp_first_position}, "
+          f"exp_end_position={exp_end_position}, "
+          f"exp_laser_percent={exp_laser_percent}, "
+          f"exp_pre_time={exp_pre_time}, "
+          f"exp_experiment_time={exp_experiment_time}, "
+          f"exp_post_time={exp_post_time})")
+    
+    cmd = f"exp_start {exp_sample_rate} {exp_first_position} {exp_end_position} {exp_laser_percent} {exp_pre_time} {exp_experiment_time} {exp_post_time}\n"
+    uart.send(cmd)
+
 COMMAND_TABLE = {
     "temp_auto_start": handle_temp_auto_start,
     "temp_auto_stop": handle_temp_auto_stop,
@@ -142,6 +388,7 @@ COMMAND_TABLE = {
     "laser_manual_turn_on": handle_laser_manual_turn_on,
     "laser_manual_turn_off": handle_laser_manual_turn_off,
     "laser_manual_turn_off_all": handle_laser_manual_turn_off_all,
+    "exp_start": handle_exp_start,
 }
 
 
@@ -170,13 +417,14 @@ def ntc_update_thread(sock):
 # 🚀 MAIN LOOP
 # =========================================================
 def main():
+    global sock
     while True:
         sock = connect_to_server()
         buffer = ""
 
-        # Khởi chạy thread gửi NTC update
-        sender_thread = threading.Thread(target=ntc_update_thread, args=(sock,), daemon=True)
-        sender_thread.start()
+        # Khởi chạy thread gửi tcp (NTC update)
+        tcp_sender_thread = threading.Thread(target=ntc_update_thread, args=(sock,), daemon=True)
+        tcp_sender_thread.start()
 
         try:
             while True:
@@ -239,9 +487,11 @@ def main():
 # 🚀 CHẠY CHƯƠNG TRÌNH
 # =========================================================
 if __name__ == "__main__":
-
+    # UART từ CM4 đến OBC
     uart = SerialAPI("/dev/ttyAMA3", 115200)
     uart.set_rx_callback(on_uart_rx)
     uart.open()
-
+    # SPI từ CM4(master) đến OBC(client)
+    spi = SPIAPI()
+    spi.open()
     main()

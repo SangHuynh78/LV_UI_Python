@@ -42,18 +42,24 @@ def create_manual_group_box(parent):
     parent.manual_laser_percent_btn.setFixedSize(200, 50)
     parent.manual_laser_percent_btn.setStyleSheet("""
         QPushButton {
-            background-color: #64B5F6;  /* Xanh nhạt */
-            color: white;
+            background-color: white;
+            color: black;
             font-weight: bold;
             border-radius: 20px;
-            border: 2px solid #1E88E5;
+            border: 2px solid black;
         }
-        QPushButton:hover {
-            background-color: #42A5F5;  /* Khi rê chuột vào */
+        QPushButton:hover:!disabled {
+            background-color: grey;
         }
-        QPushButton:pressed {
-            background-color: #1E88E5;  /* Khi nhấn */
-            border: 2px solid #1565C0;
+        QPushButton:pressed:!disabled {
+            background-color: black;
+            color: white;
+            border: 2px solid black;
+        }
+        QPushButton:disabled {
+            background-color: #f0f0f0;
+            color: #808080;
+            border: 2px solid #d0d0d0;
         }
     """)
     parent.manual_laser_percent_btn.setEnabled(False)
@@ -99,6 +105,11 @@ def create_manual_group_box(parent):
                     border: 2px solid black;
                     color: white;
                 }
+                QPushButton:disabled {
+                    background-color: #f0f0f0;
+                    color: #808080;
+                    border: 2px solid #d0d0d0;
+                }
             """)
             # Kết nối đến hàm manual_exp_with_pos
             btn.clicked.connect(lambda _, pos=idx, b=btn: manual_exp_with_pos(parent, pos, global_var.manual_laser_percent, b))
@@ -112,8 +123,8 @@ def create_manual_group_box(parent):
 
     grid_group.setLayout(grid)
 
-    layout_laser.addWidget(manual_laser_percent_group, 2)
-    layout_laser.addWidget(grid_group, 8)
+    layout_laser.addWidget(manual_laser_percent_group, 3)
+    layout_laser.addWidget(grid_group, 7)
 
     manual_box.setLayout(layout_laser)
     # return manual_box, buttons
@@ -126,13 +137,24 @@ def exp_manual_reset(parent):
     for btn in getattr(parent, "exp_manual_buttons_list", []):
         btn.setChecked(False)
         btn.setStyleSheet("""
-            border-radius: 20px;
-            border: 2px solid black;
-            font-weight: bold;
-            background-color: white;
-            color: black;
+            QPushButton {
+                border-radius: 20px;
+                border: 2px solid black;
+                background-color: white;
+                color: black;
+                font-weight: bold;
+            }
+            QPushButton:checked {
+                background-color: #45a049;
+                border: 2px solid black;
+                color: white;
+            }
+            QPushButton:disabled {
+                background-color: #f0f0f0;
+                color: #808080;
+                border: 2px solid #d0d0d0;
+            }
         """)
-        btn.setChecked(False)
     
     # Gửi lệnh TCP
     if hasattr(parent, "tcp_server") and parent.tcp_server:
@@ -204,11 +226,3 @@ def manual_exp_with_pos(parent, pos, percent, btn):
         background-color: {'#45a049' if state else 'white'};
         color: {'white' if state else 'black'};
     """)
-
-    # TODO: gửi lệnh thực tế đến thiết bị nếu cần
-    # self.ssh_handler.send_exp_command(pos, state, percent)
-
-def abc(parent, x, y, z):
-    # Nếu server đang chạy → gửi lệnh cho client
-    if hasattr(parent, "tcp_server") and parent.tcp_server:
-        parent.tcp_server.send_command("abc", x=x, y=y, z=z)

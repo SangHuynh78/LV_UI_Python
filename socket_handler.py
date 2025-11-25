@@ -5,6 +5,7 @@ import queue
 from PyQt5.QtWidgets import QGroupBox, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QGridLayout
 from PyQt5.QtCore import Qt
 import time
+# from exp_auto import exp_auto_turn_off_led, exp_auto_turn_on_led
 import global_var
 
 
@@ -33,14 +34,19 @@ def handle_ntc_temp_update(params):
         "NTC7": NTC7
     }
 
-    # print(f"ntc_temp_update: "
-    #       f"NTC0={NTC0}, NTC1={NTC1}, "
-    #       f"NTC4={NTC4}, NTC5={NTC5}, "
-    #       f"NTC2={NTC2}, NTC3={NTC3}, "
-    #       f"NTC6={NTC6}, NTC7={NTC7}")
+# def handle_exp_started(params):
+#     pos = int(params.get("pos", 0))
+#     exp_auto_turn_on_led(pos)
+#     print(f"handle_exp_started: pos={pos}")
+
+# def handle_exp_ended(params):
+#     # pos = int(params.get("pos", 0))
+#     exp_auto_turn_off_led(0)
+#     print(f"handle_exp_started: pos={pos}")
 
 COMMAND_TABLE = {
     "ntc_temp_update": handle_ntc_temp_update,
+    # "exp_started": handle_exp_started,
 }
 
 # =========================================================
@@ -189,12 +195,6 @@ class TCPServer:
                                 print(f"[Lệnh không xác định]: {cmd}")
                     except json.JSONDecodeError:
                         print(f"[Dữ liệu không hợp lệ]: {line}")
-                # try:
-                #     msg = json.loads(line)
-                #     self.out_queue.put_nowait(msg)
-                #     print(f"[📩 Nhận từ client {addr}]: {msg}")
-                # except json.JSONDecodeError:
-                #     print(f"[⚠️ Dữ liệu lỗi từ {addr}]: {line}")
 
         except Exception as e:
             print(f"[⚠️ Client {addr} lỗi]: {e}")
