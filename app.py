@@ -2,6 +2,7 @@
 
 import sys
 from PyQt5.QtWidgets import QApplication
+import global_var
 from main_window import CubeSat_Monitor
 from PyQt5.QtCore import Qt
 
@@ -22,6 +23,7 @@ from PyQt5.QtCore import Qt
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = CubeSat_Monitor()
+    global_var.window = window
     window.show()
     # window.showMaximized()
     sys.exit(app.exec_())

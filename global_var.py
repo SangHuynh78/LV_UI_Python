@@ -34,5 +34,10 @@ exp_pre_time = 0
 exp_experiment_time = 0
 exp_post_time = 0
 
+# flag to latch other function when run experiment
+exp_running = 0
+
+# windown
+window = 0
 # parrent
 exp_auto_parent = 0

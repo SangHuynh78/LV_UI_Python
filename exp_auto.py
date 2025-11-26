@@ -7,8 +7,6 @@ def create_auto_group_box(parent):
     """
     Tạo group box cho chế độ Auto Mode.
     """
-    global_var.exp_auto_parent = parent
-
     exp_auto_group = QGroupBox("🤖 Auto Control")
     exp_auto_layout = QHBoxLayout()
     # --- Cột 1: Bố trí các ô nhập liệu và nút START ---
@@ -17,7 +15,7 @@ def create_auto_group_box(parent):
     exp_auto_profile_layout.setSpacing(5)  # Giảm khoảng cách giữa các widget
 
     # --- Các ô nhập liệu ---
-    parent.exp_sample_rate = QLineEdit("1000000")
+    parent.exp_sample_rate = QLineEdit("500000")
     parent.exp_sample_rate.setMaximumWidth(120)
     parent.exp_first_position = QLineEdit("1")
     parent.exp_first_position.setMaximumWidth(55)
@@ -33,7 +31,7 @@ def create_auto_group_box(parent):
     parent.exp_post_time.setMaximumWidth(120)
 
     # Placeholder giúp gợi ý nội dung nhập
-    parent.exp_sample_rate.setPlaceholderText("1000000")
+    parent.exp_sample_rate.setPlaceholderText("500000")
     parent.exp_first_position.setPlaceholderText("1")
     parent.exp_end_position.setPlaceholderText("36")
     parent.exp_laser_percent.setPlaceholderText("0-100")
@@ -200,6 +198,38 @@ def start_experiment(self):
             exp_experiment_time = global_var.exp_experiment_time,
             exp_post_time = global_var.exp_post_time,
         )
+
+    # Cập nhật trạng thái run thí nghiệm
+    global_var.exp_running = 1
+    # Khóa profile
+    self.exp_sample_rate.setEnabled(False)
+    self.exp_first_position.setEnabled(False)
+    self.exp_end_position.setEnabled(False)
+    self.exp_laser_percent.setEnabled(False)
+    self.exp_pre_time.setEnabled(False)
+    self.exp_experiment_time.setEnabled(False)
+    self.exp_post_time.setEnabled(False)
+    # Khóa auto_exp_start
+    self.start_btn.setEnabled(False)
+    # Khóa temp
+    self.start_temp_ctrl_btn.setEnabled(False)
+    self.start_temp_override_btn.setEnabled(False)
+    # Khóa manual mode
+    self.manual_toggle_btn.setEnabled(False)
+    self.manual_toggle_btn.setStyleSheet("""
+        border-radius: 20px;
+        background-color: #f0f0f0;
+        color: #808080;
+        border: 2px solid #d0d0d0;
+    """)
+    # Khóa auto mode
+    self.auto_toggle_btn.setEnabled(False)
+    self.auto_toggle_btn.setStyleSheet("""
+        border-radius: 20px;
+        background-color: #f0f0f0;
+        color: #808080;
+        border: 2px solid #d0d0d0;
+    """)
 
 # def exp_auto_turn_on_led(position):
 #     idx = position - 1

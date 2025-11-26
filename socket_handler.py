@@ -44,9 +44,14 @@ def handle_ntc_temp_update(params):
 #     exp_auto_turn_off_led(0)
 #     print(f"handle_exp_started: pos={pos}")
 
+def exp_done_trigger(params=None):
+    global_var.window.exp_done_signal.emit()
+    
 COMMAND_TABLE = {
     "ntc_temp_update": handle_ntc_temp_update,
     # "exp_started": handle_exp_started,
+    # "exp_ended": handle_exp_ended,
+    "exp_done": exp_done_trigger,
 }
 
 # =========================================================

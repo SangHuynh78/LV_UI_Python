@@ -18,6 +18,7 @@ CONFIG_DIR = Path.home() / ".app_src/02_ConfigSystem"
 
 # Global variable to track current timepoint folder
 current_timepoint_folder = None
+new_exp_turn = True
 
 def get_daily_folder():
     today = datetime.now().strftime("%Y%m%d")
@@ -25,16 +26,16 @@ def get_daily_folder():
     daily_folder.mkdir(parents=True, exist_ok=True)
     return daily_folder
 
-def get_timepoint_folder():
-    """Get current timepoint folder, create temp folder if none exists"""
-    global current_timepoint_folder
-    if current_timepoint_folder is None:
-        # Create default temp folder if no timepoint has been set
-        daily_folder = get_daily_folder()
-        temp_folder = daily_folder / "temp"
-        temp_folder.mkdir(parents=True, exist_ok=True)
-        return temp_folder
-    return current_timepoint_folder
+# def get_timepoint_folder():
+#     """Get current timepoint folder, create temp folder if none exists"""
+#     global current_timepoint_folder
+#     if current_timepoint_folder is None:
+#         # Create default temp folder if no timepoint has been set
+#         daily_folder = get_daily_folder()
+#         temp_folder = daily_folder / "temp"
+#         temp_folder.mkdir(parents=True, exist_ok=True)
+#         return temp_folder
+#     return current_timepoint_folder
 
 # def get_timepoint_folder():
 #     """Get current timepoint folder, create folder based on timestamp if none exists"""
@@ -47,11 +48,25 @@ def get_timepoint_folder():
 #         current_timepoint_folder.mkdir(parents=True, exist_ok=True)
 #     return current_timepoint_folder
 
+def get_timepoint_folder(force_new=False):
+    """Get current timepoint folder, create folder based on timestamp if none exists"""
+    global current_timepoint_folder
+    if current_timepoint_folder is None or force_new:
+        daily_folder = get_daily_folder()  # folder ngày hiện tại
+        # Tạo folder timestamp mới
+        timestamp = datetime.now().strftime("%H%M%S")
+        current_timepoint_folder = daily_folder / timestamp
+        current_timepoint_folder.mkdir(parents=True, exist_ok=True)
+        
+        global new_exp_turn
+        new_exp_turn = False
+    return current_timepoint_folder
+
 def save_data_file(filename, content, append=False, use_timepoint=True):
     """Save data file to appropriate location"""
     if use_timepoint:
         # Save to timepoint folder for experiment data
-        folder = get_timepoint_folder()
+        folder = get_timepoint_folder(force_new = new_exp_turn)
     else:
         # Save to daily folder for logs
         folder = get_daily_folder()
@@ -78,7 +93,7 @@ sock = None
 ntc_temp = [0] * 8
 
 # =========================================================
-# 🧩 HANDLERS
+# 🧩 HANDLERS COMMAND FROM OBC
 # =========================================================
 
 def handle_ntc_temp(params):
@@ -95,15 +110,12 @@ def handle_ntc_temp(params):
 #     if sock is None:
 #         print("[!] sock chưa sẵn sàng")
 #         return
-
 #     # Ép kiểu pos về int luôn để an toàn
 #     pos = int(params[0])
-
 #     msg = {
 #         "cmd": "exp_started",
 #         "params": {"pos": pos}
 #     }
-
 #     try:
 #         sock.sendall((json.dumps(msg) + "\n").encode('utf-8'))
 #         print(f"[TCP] Sent exp_started: pos={pos}")
@@ -118,11 +130,9 @@ def handle_ntc_temp(params):
 #     if sock is None:
 #         print("[!] sock chưa sẵn sàng")
 #         return
-
 #     msg = {
 #         "cmd": "exp_ended",
 #     }
-
 #     try:
 #         sock.sendall((json.dumps(msg) + "\n").encode('utf-8'))
 #         print(f"[TCP] Sent exp_ended")
@@ -142,14 +152,12 @@ def handle_data_chunk(params):
         
         # Parse fields
         chunk_id = (params[0] << 8) | params[1]
-
         crc_received = (
             (params[2] << 24) |
             (params[3] << 16) |
             (params[4] << 8)  |
             params[5]
         )
-
         year   = params[6]
         month  = params[7]
         day    = params[8]
@@ -179,14 +187,11 @@ def handle_data_chunk(params):
 def handle_current_chunk(params):
     try:
         print("[CMD] CURRENT")
-
         # Chuyển tất cả param sang int
         params = [int(x) for x in params]
-
         if len(params) != 11:
             print("[!] Invalid CURRENT payload")
             return
-
         # Parse CRC và timestamp
         crc_received = (
             (params[0] << 24) |
@@ -194,7 +199,6 @@ def handle_current_chunk(params):
             (params[2] << 8)  |
             params[3]
         )
-
         year   = params[4]
         month  = params[5]
         day    = params[6]
@@ -202,34 +206,26 @@ def handle_current_chunk(params):
         minute = params[8]
         second = params[9]
         index  = params[10]
-
         # Đọc dữ liệu SPI
         current_data = spi.read_spi_block()
         # crc_calc = calculate_crc32(data)
-
         # print(f"Received CRC: {crc_received:08X}, Calculated CRC: {crc_calc:08X}")
         print(f"Timestamp: 20{year:02d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}")
-
         # Lưu dữ liệu vào file
         filename = f"current_i{index:02d}_20{year:02d}{month:02d}{day:02d}_{hour:02d}{minute:02d}{second:02d}.bin"
         save_data_file(filename, current_data, use_timepoint=True)
-
         print("[.] Current Data got!")
-
     except Exception as e:
         print(f"[!] Exception in CURRENT handler: {e}")
 
 def handle_log_chunk(params):
     try:
         print("[CMD] LOG")
-
         # Chuyển tất cả param sang int
         params = [int(x) for x in params]
-
         if len(params) != 7:
             print("[!] Invalid LOG payload")
             return
-
         # Parse fields
         log_type = params[0]  # 0xFF for obc, else exp
         year   = params[1]
@@ -238,28 +234,41 @@ def handle_log_chunk(params):
         hour   = params[4]
         minute = params[5]
         second = params[6]
-
         # Đặt tên file
         label = "obc_log" if log_type == 0xFF else "exp_log"
         filename = f"{label}_20{year:02d}{month:02d}{day:02d}_{hour:02d}{minute:02d}{second:02d}.bin"
-
         # Đọc dữ liệu SPI và lưu file
         data = spi.read_spi_block()
         save_data_file(filename, data, use_timepoint=False)
-
         print(f"[.] -> Got: {label}!")
-
     except Exception as e:
         print(f"[!] Exception in LOG handler: {e}")
 
-
+def handle_exp_done(params):
+    global sock
+    if sock is None:
+        print("[!] sock chưa sẵn sàng")
+        return
+    msg = {
+        "cmd": "exp_done",
+    }
+    global new_exp_turn
+    new_exp_turn = True
+    try:
+        sock.sendall((json.dumps(msg) + "\n").encode('utf-8'))
+        print(f"[TCP] Sent exp_done")
+    except Exception as e:
+        print(f"[!] Lỗi gửi TCP: {e}")
+    
 
 UART_DISPATCH_TABLE = {
     "ntc_temp": handle_ntc_temp,
     # "exp_started": handle_exp_started,
+    # "exp_ended": handle_exp_ended,
     "data_chunk": handle_data_chunk,
     "current_chunk": handle_current_chunk,
     "log_chunk": handle_log_chunk,
+    "exp_done": handle_exp_done,
 }
 
 # =========================================================
@@ -297,8 +306,9 @@ def connect_to_server():
             time.sleep(2)
 
 
+
 # =========================================================
-# 🧭 BẢNG ÁNH XẠ LỆNH → HÀM XỬ LÝ
+# 🧩 HANDLERS COMMAND FROM PC SERVER
 # =========================================================
 def handle_temp_auto_start(params):
     tec_voltage = params.get("tec_vol")
@@ -378,7 +388,10 @@ def handle_exp_start(params):
     
     cmd = f"exp_start {exp_sample_rate} {exp_first_position} {exp_end_position} {exp_laser_percent} {exp_pre_time} {exp_experiment_time} {exp_post_time}\n"
     uart.send(cmd)
-
+    
+# =========================================================
+# 🧭 BẢNG ÁNH XẠ LỆNH từ PC server
+# =========================================================
 COMMAND_TABLE = {
     "temp_auto_start": handle_temp_auto_start,
     "temp_auto_stop": handle_temp_auto_stop,

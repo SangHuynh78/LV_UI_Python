@@ -2,9 +2,9 @@ from PyQt5.QtWidgets import (
     QGroupBox, QGridLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QVBoxLayout, QMessageBox, QWidget
 )
 from PyQt5.QtCore import Qt
-import queue
 import global_var
 import pyqtgraph as pg
+import numpy as np
 
 
 def create_temperature_show_box(parent):
@@ -246,58 +246,6 @@ def stop_override_temperature(parent):
     if hasattr(parent, "tcp_server") and parent.tcp_server:
         parent.tcp_server.send_command("temp_override_stop")
 
-# def update_graph(parent):
-#     """
-#     Cập nhật biểu đồ 8 NTC mỗi giây từ global_var.ntc_temp (dict có NTC0..NTC7).
-#     Dữ liệu được lưu thành danh sách cuộn để hiển thị biểu đồ thời gian.
-#     parent: instance CubeSat_Monitor
-#     """
-#     # Khởi tạo vùng lưu dữ liệu nếu chưa có
-#     if not hasattr(parent, "ntc_data_history"):
-#         parent.ntc_data_history = {f"NTC{i}": [] for i in range(8)}
-#         parent.x_data = []
-#         parent.index = 0
-
-#     # Lấy dữ liệu hiện tại từ global_var
-#     ntc_now = getattr(global_var, "ntc_temp", {})
-#     if not isinstance(ntc_now, dict) or not ntc_now:
-#         return
-
-#     # Mỗi lần update_graph (1s), thêm giá trị mới vào lịch sử
-#     for i in range(8):
-#         key = f"NTC{i}"
-#         try:
-#             val = float(ntc_now.get(key, 0.0))
-#         except (TypeError, ValueError):
-#             val = 0.0
-#         parent.ntc_data_history[key].append(val)
-#         parent.ntc_data_history[key] = parent.ntc_data_history[key][-120:]  # giữ 120 điểm (2 phút nếu 1 Hz)
-
-#     # Cập nhật trục x (thời gian hoặc điểm)
-#     parent.index += 1
-#     parent.x_data.append(parent.index)
-#     parent.x_data = parent.x_data[-120:]
-
-#     # Cập nhật từng đường đồ thị
-#     for i in range(8):
-#         y = parent.ntc_data_history[f"NTC{i}"]
-#         x_for_y = parent.x_data[-len(y):]
-#         try:
-#             parent.curves[i].setData(x_for_y, y)
-#         except Exception:
-#             pass
-
-#         # Cập nhật label nhiệt độ
-#         try:
-#             if y:
-#                 parent.temp_labels[i].setText(f"NTC{i}: {y[-1]:.2f} °C")
-#             else:
-#                 parent.temp_labels[i].setText(f"NTC{i}: -- °C")
-#         except Exception:
-#             pass
-
-import numpy as np
-
 def update_graph(parent):
     """
     Cập nhật biểu đồ 8 NTC mỗi giây.
@@ -356,8 +304,8 @@ def update_graph(parent):
         try:
             last = y[-1]
             if np.isnan(last):
-                parent.temp_labels[i].setText(f"NTC{i}: Not Connected")
+                parent.temp_labels[i].setText(f"NTC{i+1}: Not Connected")
             else:
-                parent.temp_labels[i].setText(f"NTC{i}: {last:.1f} °C")
+                parent.temp_labels[i].setText(f"NTC{i+1}: {last:.1f} °C")
         except:
             pass

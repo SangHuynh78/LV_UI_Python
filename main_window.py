@@ -3,10 +3,10 @@
 import threading
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,  QPushButton,
-    QGroupBox, QTextEdit,
+    QGroupBox, QTextEdit, QMessageBox
 )
 from PyQt5.QtGui import QPixmap, QIcon
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtCore import QTimer, Qt, pyqtSignal
 import pyqtgraph as pg
 
 from temp_ctrl import create_temperature_show_box, create_temperature_graph_box, create_temperature_control_box, update_graph, create_temperature_override_box
@@ -18,6 +18,11 @@ from socket_handler import create_socket_group_box
 import global_var
 
 class CubeSat_Monitor(QWidget):
+    exp_done_signal = pyqtSignal()
+
+    # def on_exp_done(self):
+    #     handle_exp_done()
+        
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.close()
@@ -30,6 +35,7 @@ class CubeSat_Monitor(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.exp_done_signal.connect(self.handle_exp_done)
         self.setWindowIcon(QIcon("img/S_logo.png"))
         self.setWindowTitle("Sang Huynh")
         self.resize(1920, 1080)
@@ -84,8 +90,14 @@ class CubeSat_Monitor(QWidget):
         # self.queue_timer.start(100)  # 100ms/lần
     
     def closeEvent(self, event):
-        self.app_block_timer.stop()
-        self.tigraph_timermer.stop()
+        try:
+            self.app_block_timer.stop()
+        except:
+            pass
+        try:
+            self.graph_timer.stop()
+        except:
+            pass
         # self.queue_timer.stop()
         if hasattr(self, "tcp_server") and self.tcp_server:
             try:
@@ -93,6 +105,35 @@ class CubeSat_Monitor(QWidget):
             except:
                 pass
         event.accept()
+
+
+    def handle_exp_done(self):
+        ret = QMessageBox.information(
+            self,
+            "Experiment",
+            "Completed sampling!"
+        )
+
+        if ret == QMessageBox.Ok:
+            global_var.exp_running = 0
+
+        # Mở khóa hóa profile
+        self.exp_sample_rate.setEnabled(True)
+        self.exp_first_position.setEnabled(True)
+        self.exp_end_position.setEnabled(True)
+        self.exp_laser_percent.setEnabled(True)
+        self.exp_pre_time.setEnabled(True)
+        self.exp_experiment_time.setEnabled(True)
+        self.exp_post_time.setEnabled(True)
+        # Mở khóa exp_auto_start
+        self.start_btn.setEnabled(True)
+        # Mở khóa 2 temp button
+        self.start_temp_ctrl_btn.setEnabled(True)
+        self.start_temp_override_btn.setEnabled(True)
+        # Mở khóa 2 toggle mode button
+        self.toggle_mode(False)
+        self.manual_toggle_btn.setEnabled(True)
+        self.auto_toggle_btn.setEnabled(True)
 
     def tcp_connect_block_app_check(self):
         if global_var.tcp_connect_changed == True:
