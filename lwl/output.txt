@@ -218,7 +218,7 @@ Temperature: NTC[4]: 32768
 Temperature: NTC[5]: 32768
 Temperature: NTC[6]: 32768
 Temperature: NTC[7]: 32768
-Time: Day 1, 2:28:9
+Time: Day 1, 2:28:9 
 Temperature: NTC[0]: 310
 Temperature: NTC[1]: 306
 Temperature: NTC[2]: 304

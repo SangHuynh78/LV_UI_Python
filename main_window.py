@@ -243,11 +243,11 @@ class CubeSat_Monitor(QWidget):
         # --- Cột 3 hàng 2: Ảnh hệ thống ---
         img_group = QGroupBox("📷 System Image")
         img_layout = QVBoxLayout()
-        self.image_label = QLabel()
-        self.image_label.setAlignment(Qt.AlignCenter)
-        pix = QPixmap("img/S_logo.png").scaled(500, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        self.image_label.setPixmap(pix)
-        img_layout.addWidget(self.image_label)
+        # self.image_label = QLabel()
+        # self.image_label.setAlignment(Qt.AlignCenter)
+        # pix = QPixmap("img/S_logo.png").scaled(500, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        # self.image_label.setPixmap(pix)
+        # img_layout.addWidget(self.image_label)
         img_group.setLayout(img_layout)
 
         layout.addWidget(conn_ssh_group, 1)

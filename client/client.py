@@ -18,7 +18,7 @@ CONFIG_DIR = Path.home() / ".app_src/02_ConfigSystem"
 
 # Global variable to track current timepoint folder
 current_timepoint_folder = None
-new_exp_turn = True
+new_exp_turn = False
 
 def get_daily_folder():
     today = datetime.now().strftime("%Y%m%d")
@@ -100,7 +100,7 @@ def handle_ntc_temp(params):
     global ntc_temp
     values = list(map(float, params))
     ntc_temp = values
-    print(f"[NTC Temps]: {ntc_temp}")
+    print(f"[📥 UART RX]: [NTC Temps] {ntc_temp}")
 
 # def handle_exp_started(params):
 #     """
@@ -110,12 +110,15 @@ def handle_ntc_temp(params):
 #     if sock is None:
 #         print("[!] sock chưa sẵn sàng")
 #         return
+
 #     # Ép kiểu pos về int luôn để an toàn
 #     pos = int(params[0])
+
 #     msg = {
 #         "cmd": "exp_started",
 #         "params": {"pos": pos}
 #     }
+
 #     try:
 #         sock.sendall((json.dumps(msg) + "\n").encode('utf-8'))
 #         print(f"[TCP] Sent exp_started: pos={pos}")
@@ -130,9 +133,11 @@ def handle_ntc_temp(params):
 #     if sock is None:
 #         print("[!] sock chưa sẵn sàng")
 #         return
+
 #     msg = {
 #         "cmd": "exp_ended",
 #     }
+
 #     try:
 #         sock.sendall((json.dumps(msg) + "\n").encode('utf-8'))
 #         print(f"[TCP] Sent exp_ended")
@@ -152,12 +157,14 @@ def handle_data_chunk(params):
         
         # Parse fields
         chunk_id = (params[0] << 8) | params[1]
+
         crc_received = (
             (params[2] << 24) |
             (params[3] << 16) |
             (params[4] << 8)  |
             params[5]
         )
+
         year   = params[6]
         month  = params[7]
         day    = params[8]
@@ -187,11 +194,14 @@ def handle_data_chunk(params):
 def handle_current_chunk(params):
     try:
         print("[CMD] CURRENT")
+
         # Chuyển tất cả param sang int
         params = [int(x) for x in params]
+
         if len(params) != 11:
             print("[!] Invalid CURRENT payload")
             return
+
         # Parse CRC và timestamp
         crc_received = (
             (params[0] << 24) |
@@ -199,6 +209,7 @@ def handle_current_chunk(params):
             (params[2] << 8)  |
             params[3]
         )
+
         year   = params[4]
         month  = params[5]
         day    = params[6]
@@ -206,26 +217,34 @@ def handle_current_chunk(params):
         minute = params[8]
         second = params[9]
         index  = params[10]
+
         # Đọc dữ liệu SPI
         current_data = spi.read_spi_block()
         # crc_calc = calculate_crc32(data)
+
         # print(f"Received CRC: {crc_received:08X}, Calculated CRC: {crc_calc:08X}")
         print(f"Timestamp: 20{year:02d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}")
+
         # Lưu dữ liệu vào file
         filename = f"current_i{index:02d}_20{year:02d}{month:02d}{day:02d}_{hour:02d}{minute:02d}{second:02d}.bin"
         save_data_file(filename, current_data, use_timepoint=True)
+
         print("[.] Current Data got!")
+
     except Exception as e:
         print(f"[!] Exception in CURRENT handler: {e}")
 
 def handle_log_chunk(params):
     try:
         print("[CMD] LOG")
+
         # Chuyển tất cả param sang int
         params = [int(x) for x in params]
+
         if len(params) != 7:
             print("[!] Invalid LOG payload")
             return
+
         # Parse fields
         log_type = params[0]  # 0xFF for obc, else exp
         year   = params[1]
@@ -234,13 +253,17 @@ def handle_log_chunk(params):
         hour   = params[4]
         minute = params[5]
         second = params[6]
+
         # Đặt tên file
         label = "obc_log" if log_type == 0xFF else "exp_log"
         filename = f"{label}_20{year:02d}{month:02d}{day:02d}_{hour:02d}{minute:02d}{second:02d}.bin"
+
         # Đọc dữ liệu SPI và lưu file
         data = spi.read_spi_block()
         save_data_file(filename, data, use_timepoint=False)
+
         print(f"[.] -> Got: {label}!")
+
     except Exception as e:
         print(f"[!] Exception in LOG handler: {e}")
 
@@ -249,11 +272,14 @@ def handle_exp_done(params):
     if sock is None:
         print("[!] sock chưa sẵn sàng")
         return
+
     msg = {
         "cmd": "exp_done",
     }
+
     global new_exp_turn
     new_exp_turn = True
+
     try:
         sock.sendall((json.dumps(msg) + "\n").encode('utf-8'))
         print(f"[TCP] Sent exp_done")
@@ -275,7 +301,7 @@ UART_DISPATCH_TABLE = {
 # 📥 UART RX callback
 # =========================================================
 def on_uart_rx(line):
-    print(f"[📥 UART RX]: {line}")
+    # print(f"[📥 UART RX]: {line}")
 
     tokens = line.strip().split()
     if len(tokens) == 0:
@@ -386,7 +412,7 @@ def handle_exp_start(params):
           f"exp_experiment_time={exp_experiment_time}, "
           f"exp_post_time={exp_post_time})")
     
-    cmd = f"exp_start {exp_sample_rate} {exp_first_position} {exp_end_position} {exp_laser_percent} {exp_pre_time} {exp_experiment_time} {exp_post_time}\n"
+    cmd = f"experiment_start {exp_sample_rate} {exp_first_position} {exp_end_position} {exp_laser_percent} {exp_pre_time} {exp_experiment_time} {exp_post_time}\n"
     uart.send(cmd)
     
 # =========================================================
@@ -401,7 +427,7 @@ COMMAND_TABLE = {
     "laser_manual_turn_on": handle_laser_manual_turn_on,
     "laser_manual_turn_off": handle_laser_manual_turn_off,
     "laser_manual_turn_off_all": handle_laser_manual_turn_off_all,
-    "exp_start": handle_exp_start,
+    "experiment_start": handle_exp_start,
 }
 
 
@@ -411,7 +437,7 @@ COMMAND_TABLE = {
 def ntc_update_thread(sock):
     while True:
         try:
-            # Giả lập dữ liệu NTC0...NTC7
+            # Dữ liệu NTC0...NTC7
             params = {f"NTC{i}": ntc_temp[i] for i in range(8)}
             msg = {
                 "cmd": "ntc_temp_update",
@@ -419,9 +445,9 @@ def ntc_update_thread(sock):
             }
             data = (json.dumps(msg) + "\n").encode('utf-8')
             sock.sendall(data)
-            # print(f"[📤 Gửi]: {msg}")  # bật nếu muốn debug
+            print(f"[📨 TCP TX]: {msg}")  # bật nếu muốn debug
         except Exception as e:
-            print(f"[⚠️ Lỗi gửi NTC update]: {e}")
+            print(f"[⚠️ TCP_ERROR]: {e}")
             break
         time.sleep(1)  # gửi mỗi 1 giây
 
@@ -455,18 +481,19 @@ def main():
                             continue
 
                         if line == "server_hello_client":
-                            print("[📩 Nhận handshake] server_hello_client — gửi client_hello_server")
+                            print("[🫸 HANDSHAKE] server_hello_client")
                             try:
                                 sock.sendall(b"client_hello_server\n")
+                                print("[🫷 HANDSHAKE] client_hello_server")
                             except Exception as e:
-                                print(f"[⚠️ Lỗi khi gửi handshake]: {e}")
+                                print(f"[⚠️ Handshake error]: {e}")
 
                         elif line == "reject":
-                            print("[⚠️ Server yêu cầu ngắt kết nối]")
+                            print("[⚠️ Server required rejection]")
                             raise ConnectionError("Server rejected")
 
                         else:
-                            print(f"[📩 Nhận từ server]: {line}")
+                            print(f"[📩 TCP RX]: {line}")
                             try:
                                 msg = json.loads(line)
                                 if isinstance(msg, dict) and "cmd" in msg:

@@ -189,7 +189,7 @@ def start_experiment(self):
     # Gửi lệnh TCP
     if hasattr(self, "tcp_server") and self.tcp_server:
         self.tcp_server.send_command(
-            "exp_start",
+            "experiment_start",
             exp_sample_rate = global_var.exp_sample_rate,
             exp_first_position = global_var.exp_first_position,
             exp_end_position = global_var.exp_end_position,
