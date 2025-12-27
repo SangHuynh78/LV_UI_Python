@@ -11,6 +11,10 @@ manual_laser_percent = 0
 # Mỗi phần tử là danh sách chứa lịch sử nhiệt độ
 ntc_temp = [[] for _ in range(8)]
 
+# Dữ liệu bmp390
+bmp390_temp = 0.0
+bmp390_press = 0.0
+
 # Temperature variable
 temp_tec_voltage = 0
 temp_heater_duty = 0

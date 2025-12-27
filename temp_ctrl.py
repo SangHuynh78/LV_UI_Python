@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import (
     QGroupBox, QGridLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QVBoxLayout, QMessageBox, QWidget
 )
 from PyQt5.QtCore import Qt
+from bmp390 import update_bmp390_ui
 import global_var
 import pyqtgraph as pg
 import numpy as np
@@ -253,6 +254,9 @@ def update_graph(parent):
     - raw_value = temp * 10 => chia 10 khi hiển thị
     - ngắt đoạn bằng np.nan (không dùng None)
     """
+    
+    # Cập nhật BMP390
+    update_bmp390_ui(parent, global_var.bmp390_temp / 10.0, global_var.bmp390_press / 10.0)
 
     # Khởi tạo vùng lưu dữ liệu nếu chưa có
     if not hasattr(parent, "ntc_data_history"):
@@ -283,12 +287,12 @@ def update_graph(parent):
                 val = np.nan
 
         parent.ntc_data_history[key].append(val)
-        parent.ntc_data_history[key] = parent.ntc_data_history[key][-120:]
+        parent.ntc_data_history[key] = parent.ntc_data_history[key][-600:]
 
     # Trục X
     parent.index += 1
     parent.x_data.append(parent.index)
-    parent.x_data = parent.x_data[-120:]
+    parent.x_data = parent.x_data[-600:]
 
     # Vẽ và cập nhật label
     for i in range(8):
