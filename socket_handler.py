@@ -25,6 +25,9 @@ def handle_ntc_temp_update(params):
     BMP390_temp = params.get("BMP390_0")
     BMP390_press = params.get("BMP390_1")
 
+    AHT20_temp = params.get("AHT20_0")
+    AHT20_hum = params.get("AHT20_1")
+
     # Cập nhật giá trị nhiệt độ vào global_var
     global_var.ntc_temp = {
         "NTC0": NTC0,
@@ -39,6 +42,9 @@ def handle_ntc_temp_update(params):
 
     global_var.bmp390_temp = BMP390_temp
     global_var.bmp390_press = BMP390_press
+
+    global_var.aht20_temp = AHT20_temp
+    global_var.aht20_hum = AHT20_hum
 
 # def handle_exp_started(params):
 #     pos = int(params.get("pos", 0))

@@ -15,6 +15,10 @@ ntc_temp = [[] for _ in range(8)]
 bmp390_temp = 0.0
 bmp390_press = 0.0
 
+# Dữ liệu aht20
+aht20_temp = 0.0
+aht20_hum = 0.0
+
 # Temperature variable
 temp_tec_voltage = 0
 temp_heater_duty = 0

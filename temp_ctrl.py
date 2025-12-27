@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import (
     QGroupBox, QGridLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QVBoxLayout, QMessageBox, QWidget
 )
 from PyQt5.QtCore import Qt
+from aht20 import update_aht20_ui
 from bmp390 import update_bmp390_ui
 import global_var
 import pyqtgraph as pg
@@ -257,6 +258,9 @@ def update_graph(parent):
     
     # Cập nhật BMP390
     update_bmp390_ui(parent, global_var.bmp390_temp / 10.0, global_var.bmp390_press / 10.0)
+
+    # Cập nhật AHT20
+    update_aht20_ui(parent, global_var.aht20_temp / 10.0, global_var.aht20_hum / 10.0)
 
     # Khởi tạo vùng lưu dữ liệu nếu chưa có
     if not hasattr(parent, "ntc_data_history"):

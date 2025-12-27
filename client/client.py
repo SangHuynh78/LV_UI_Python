@@ -92,6 +92,7 @@ PORT = 5000
 sock = None
 ntc_temp = [0] * 8
 bmp390 = [0] * 2
+aht20 = [0] * 2
 
 # =========================================================
 # 🧩 HANDLERS COMMAND FROM OBC
@@ -103,7 +104,9 @@ def handle_ntc_temp(params):
     ntc_temp = values[:8]
     bmp390[0] = float(params[8])  # temperature
     bmp390[1] = float(params[9])  # Pressure
-    print(f"[📥 UART RX]: [NTC Temps] {ntc_temp} [BMP390] {bmp390}")
+    aht20[0] = float(params[10])  # temperature
+    aht20[1] = float(params[11])  # Humidity
+    print(f"[📥 UART RX]: [NTC Temps] {ntc_temp} [BMP390] {bmp390} [AHT20] {aht20}")
 
 # def handle_exp_started(params):
 #     """
@@ -443,6 +446,7 @@ def ntc_update_thread(sock):
             # Dữ liệu NTC0...NTC7
             params = {f"NTC{i}": ntc_temp[i] for i in range(8) }
             params.update({f"BMP390_{i}": bmp390[i] for i in range(2)})
+            params.update({f"AHT20_{i}": aht20[i] for i in range(2)})
             msg = {
                 "cmd": "ntc_temp_update",
                 "params": params

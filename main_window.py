@@ -9,6 +9,7 @@ from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal
 import pyqtgraph as pg
 
+from aht20 import create_aht20_show_box
 from bmp390 import create_bmp390_show_box
 from temp_ctrl import create_temperature_show_box, create_temperature_graph_box, create_temperature_control_box, update_graph, create_temperature_override_box
 from exp_manual import create_manual_group_box, exp_manual_reset
@@ -184,6 +185,9 @@ class CubeSat_Monitor(QWidget):
         self.bmp390_group = create_bmp390_show_box(self)
 
         # Cột 1 Hàng 5
+        self.aht20_group = create_aht20_show_box(self)
+
+        # Cột 1 Hàng 6
         log_group = QGroupBox("📝 Log")
         self.log_box = QTextEdit()
         self.log_box.setReadOnly(True)
@@ -195,6 +199,7 @@ class CubeSat_Monitor(QWidget):
         layout.addWidget(self.temp_ctrl_group)
         layout.addWidget(self.temp_override_group)
         layout.addWidget(self.bmp390_group)
+        layout.addWidget(self.aht20_group)
         layout.addWidget(log_group)
 
     # ----------------------------
