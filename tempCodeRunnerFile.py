@@ -1,1 +1,0 @@
-pos = params.get("pos")

@@ -315,6 +315,11 @@ def decode_log_file(file_path, output_file='output.txt'):
     decode_log_data(data, output_file)
     return 0
 
+
+# python lwl_decode.py --bin exp_log_20100001_623430.bin --output exp_log_20100001_623430_output.txt
+# python lwl_decode.py --bin exp_log_20100001_634552.bin --output exp_log_20100001_634552_output.txt
+# python lwl_decode.py --bin obc_log_20010001_401921.bin --output obc_log_20010001_401921_output.txt
+
 def main():
     _log.setLevel(logging.DEBUG)  # Default log level is debug
     parser = argparse.ArgumentParser(description='Decode LWL log data from a binary file')
