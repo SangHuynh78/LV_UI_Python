@@ -22,6 +22,12 @@ def plot_time_domain(data, sample_rate=1000, title=""):
 if __name__ == "__main__":
     # final fw
     folder_path = "./20251127/014104"
+    folder_path = "./20251127/153811"
+    folder_path = "./20251127/154219"
+    folder_path = "./20251127/154439"
+    folder_path = "./20251127/155643"
+    folder_path = "./20251127/160023"
+    folder_path = "./20251127/105750"
 
     sample_rate = 500_000  # Hz
 

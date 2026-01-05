@@ -24,7 +24,10 @@ def plot_time_domain(data, sample_rate=000, title=""):
     plt.show()
 
 if __name__ == "__main__":
-    folder_path = "./20251127/014104"
+    # folder_path = "./20251127/014104"
+    folder_path = "./20251127/153811"
+    folder_path = "./20251127/105750"
+
 
     sample_rate = 1000  # Hz
 
